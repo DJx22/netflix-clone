@@ -1,0 +1,297 @@
+openapi: 3.0.3
+info:
+  title: Catalog Service API
+  description: >
+    Movie/show metadata, genres, and search. MongoDB-backed. The only core service
+    routing through Mediator/CQRS — reads and writes hit separate query/command
+    handlers internally (csharp-coding-standard.md §6). That split is invisible at
+    the HTTP contract level; it doesn't change this spec.
+  version: "1.0"
+
+servers:
+  - url: /catalog
+    description: Reached through the API Gateway from Phase 4 onward; direct port access in Phases 1–3 only.
+
+tags:
+  - name: Titles
+  - name: Genres
+  - name: Health
+
+paths:
+  /api/v1/titles:
+    get:
+      tags: [Titles]
+      summary: Search and list titles
+      operationId: searchTitles
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paged title results — a query-side DTO, lighter than the full detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedTitleSummaryResponse'
+    post:
+      tags: [Titles]
+      summary: Add a new title
+      description: >
+        No role restriction yet — any authenticated caller can write. Real access
+        control (a "Studio" role) is deferred to the Admin/CMS service in Phase 8.
+        Documented here so it's a visible, deliberate gap, not a missed one.
+      operationId: createTitle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertTitleRequest'
+      responses:
+        '201':
+          description: Title created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TitleDetailResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/titles/{titleId}:
+    get:
+      tags: [Titles]
+      summary: Get full detail for one title
+      operationId: getTitle
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/TitleId'
+      responses:
+        '200':
+          description: Title detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TitleDetailResponse'
+        '404':
+          description: No title with that ID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags: [Titles]
+      summary: Update a title's metadata
+      operationId: updateTitle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/TitleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertTitleRequest'
+      responses:
+        '200':
+          description: Updated title
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TitleDetailResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: No title with that ID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags: [Titles]
+      summary: Remove a title
+      operationId: deleteTitle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/TitleId'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: No title with that ID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/genres:
+    get:
+      tags: [Genres]
+      summary: List available genres
+      operationId: listGenres
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Genre list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Readiness probe target (Phase 5+)
+      operationId: getHealth
+      responses:
+        '200':
+          description: Ready to serve traffic
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Propagated across every service call and included in every log line (§13). Generated by the service if the caller omits it.
+      schema:
+        type: string
+        format: uuid
+    TitleId:
+      name: titleId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    ValidationError:
+      description: One or more fields failed validation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblemDetails'
+
+  schemas:
+    TitleSummary:
+      type: object
+      required: [titleId, name, genres, releaseYear]
+      properties:
+        titleId: { type: string }
+        name: { type: string }
+        genres:
+          type: array
+          items: { type: string }
+        releaseYear: { type: integer }
+        posterUrl: { type: string, format: uri }
+
+    PagedTitleSummaryResponse:
+      type: object
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TitleSummary'
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalCount: { type: integer }
+
+    UpsertTitleRequest:
+      type: object
+      required: [name, genres, releaseYear, maturityRating, durationMinutes]
+      properties:
+        name: { type: string, maxLength: 200 }
+        description: { type: string }
+        genres:
+          type: array
+          items: { type: string }
+        releaseYear: { type: integer }
+        maturityRating: { type: string, description: 'e.g. "PG-13", "TV-MA"' }
+        cast:
+          type: array
+          items: { type: string }
+        durationMinutes: { type: integer }
+        posterUrl: { type: string, format: uri }
+        streamingAssetId:
+          type: string
+          description: >
+            Loose reference to the Streaming service's manifest for this title — not a
+            foreign key, not validated cross-service. If it's wrong, playback breaks at
+            the Streaming service, not here.
+
+    TitleDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/TitleSummary'
+        - type: object
+          properties:
+            description: { type: string }
+            cast:
+              type: array
+              items: { type: string }
+            durationMinutes: { type: integer }
+            maturityRating: { type: string }
+            streamingAssetId: { type: string }
+
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        correlationId: { type: string, format: uuid }
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string

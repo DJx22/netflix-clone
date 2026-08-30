@@ -1,0 +1,238 @@
+openapi: 3.0.3
+info:
+  title: Subscription Service API
+  description: >
+    Plans, entitlements, and plan changes. Owns SubscriptionDb only (ADR 0001).
+    Activation is asynchronous: this service never calls Payment directly, and
+    Payment never calls this service directly — a PaymentCompleted event on
+    RabbitMQ is the only link between them (Phase 4).
+  version: "1.0"
+
+servers:
+  - url: /subscriptions
+    description: Reached through the API Gateway from Phase 4 onward; direct port access in Phases 1–3 only.
+
+tags:
+  - name: Plans
+  - name: Subscriptions
+  - name: Health
+
+paths:
+  /api/v1/plans:
+    get:
+      tags: [Plans]
+      summary: List available subscription plans
+      description: No auth required — browsing plans before signing up is a real flow.
+      operationId: listPlans
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Plan list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanResponse'
+
+  /api/v1/subscriptions/me:
+    get:
+      tags: [Subscriptions]
+      summary: Get the caller's current subscription
+      operationId: getMySubscription
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Current subscription, in whatever status it's actually in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '404':
+          description: No subscription exists yet for this account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags: [Subscriptions]
+      summary: Cancel the caller's subscription
+      operationId: cancelMySubscription
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '204':
+          description: Cancelled — takes effect at currentPeriodEndUtc, not immediately
+        '404':
+          description: No subscription exists for this account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/subscriptions/me/plan:
+    put:
+      tags: [Subscriptions]
+      summary: Change the caller's plan
+      operationId: changeMyPlan
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePlanRequest'
+      responses:
+        '200':
+          description: Updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: No subscription exists for this account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/subscriptions:
+    post:
+      tags: [Subscriptions]
+      summary: Start a new subscription
+      description: >
+        Returns 202, not 201 — the subscription is created in PendingPayment status
+        and does not become Active synchronously. It moves to Active only when this
+        service consumes a PaymentCompleted event from RabbitMQ, published by the
+        Payment service after a separate POST to that service. Testing this flow means
+        two calls (this one, then Payment's) plus polling GET /subscriptions/me — there
+        is no push notification back to the caller in this build.
+      operationId: createSubscription
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '202':
+          description: Subscription created, pending payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Account already has an active or pending subscription
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Readiness probe target (Phase 5+)
+      operationId: getHealth
+      responses:
+        '200':
+          description: Ready to serve traffic
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Propagated across every service call and included in every log line (§13). Generated by the service if the caller omits it.
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ValidationError:
+      description: One or more fields failed validation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblemDetails'
+
+  schemas:
+    PlanResponse:
+      type: object
+      required: [planId, name, priceMonthly, maxProfiles, videoQuality]
+      properties:
+        planId: { type: string }
+        name: { type: string }
+        priceMonthly: { type: number, format: float }
+        maxProfiles: { type: integer }
+        videoQuality: { type: string, description: 'e.g. "SD", "HD", "4K"' }
+        description: { type: string }
+
+    CreateSubscriptionRequest:
+      type: object
+      required: [planId]
+      properties:
+        planId: { type: string }
+
+    ChangePlanRequest:
+      type: object
+      required: [newPlanId]
+      properties:
+        newPlanId: { type: string }
+
+    SubscriptionResponse:
+      type: object
+      required: [subscriptionId, accountId, planId, status, currentPeriodEndUtc]
+      properties:
+        subscriptionId: { type: string, format: uuid }
+        accountId: { type: string, format: uuid }
+        planId: { type: string }
+        status:
+          type: string
+          enum: [PendingPayment, Active, PastDue, Cancelled]
+        currentPeriodEndUtc: { type: string, format: date-time }
+
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        correlationId: { type: string, format: uuid }
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string

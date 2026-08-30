@@ -1,0 +1,27 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+*.pdb
+
+# Test results
+[Tt]est[Rr]esult*/
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+
+# Local-only secrets and overrides — per csharp-coding-standard.md §12, connection
+# strings never belong in appsettings.*.json in the first place, so those files
+# stay tracked. This only catches genuine personal-machine overrides on top.
+appsettings.local.json
+appsettings.*.local.json
+.env
+.env.local
+*.pfx
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db

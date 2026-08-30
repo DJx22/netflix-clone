@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Profile.Api/Profile.Api.csproj" />
+  <Project Path="Profile.Application/Profile.Application.csproj" />
+  <Project Path="Profile.Domain/Profile.Domain.csproj" />
+  <Project Path="Profile.Infrastructure/Profile.Infrastructure.csproj" />
+  <Project Path="Profile.Tests/Profile.Tests.csproj" />
+</Solution>

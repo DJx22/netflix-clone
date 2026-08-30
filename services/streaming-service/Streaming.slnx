@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Streaming.Api/Streaming.Api.csproj" />
+  <Project Path="Streaming.Application/Streaming.Application.csproj" />
+  <Project Path="Streaming.Domain/Streaming.Domain.csproj" />
+  <Project Path="Streaming.Infrastructure/Streaming.Infrastructure.csproj" />
+  <Project Path="Streaming.Tests/Streaming.Tests.csproj" />
+</Solution>

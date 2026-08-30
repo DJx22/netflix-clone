@@ -1,0 +1,281 @@
+openapi: 3.0.3
+info:
+  title: Profile Service API
+  description: >
+    Per-account viewer profiles — avatars, display names, and light preferences.
+    Owns ProfileDb only (ADR 0001). A profile belongs to exactly one account,
+    identified by the accountId claim in the caller's JWT.
+  version: "1.0"
+
+servers:
+  - url: /profiles
+    description: Reached through the API Gateway from Phase 4 onward; direct port access in Phases 1–3 only.
+
+tags:
+  - name: Profiles
+  - name: Health
+
+paths:
+  /api/v1/profiles:
+    get:
+      tags: [Profiles]
+      summary: List all profiles under the caller's account
+      operationId: listProfiles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Profiles for this account
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileResponse'
+    post:
+      tags: [Profiles]
+      summary: Create a new profile under the caller's account
+      description: >
+        Enforces a per-account profile limit (5) at the Application layer — a business
+        rule, not a database constraint, so it belongs in a validator, not a check constraint.
+      operationId: createProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfileRequest'
+      responses:
+        '201':
+          description: Profile created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Account already has the maximum number of profiles
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/profiles/{profileId}:
+    get:
+      tags: [Profiles]
+      summary: Get one profile
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '403':
+          description: Profile exists but belongs to a different account — ownership is checked here, unlike Playback's position endpoints
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: No profile with that ID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags: [Profiles]
+      summary: Update a profile
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ProfileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          description: Profile belongs to a different account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: No profile with that ID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags: [Profiles]
+      summary: Delete a profile
+      operationId: deleteProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          description: Profile belongs to a different account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: No profile with that ID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Readiness probe target (Phase 5+)
+      operationId: getHealth
+      responses:
+        '200':
+          description: Ready to serve traffic
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Propagated across every service call and included in every log line (§13). Generated by the service if the caller omits it.
+      schema:
+        type: string
+        format: uuid
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ValidationError:
+      description: One or more fields failed validation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblemDetails'
+
+  schemas:
+    CreateProfileRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          maxLength: 40
+        avatarId:
+          type: string
+        isKidsProfile:
+          type: boolean
+          default: false
+
+    UpdateProfileRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          maxLength: 40
+        avatarId:
+          type: string
+        preferredLanguage:
+          type: string
+          description: ISO 639-1 code, e.g. "en"
+        maturityRating:
+          type: string
+          description: Highest content rating this profile can browse, e.g. "PG-13"
+
+    ProfileResponse:
+      type: object
+      required: [profileId, accountId, displayName, isKidsProfile, createdAtUtc]
+      properties:
+        profileId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarId:
+          type: string
+        isKidsProfile:
+          type: boolean
+        preferredLanguage:
+          type: string
+        maturityRating:
+          type: string
+        createdAtUtc:
+          type: string
+          format: date-time
+
+    ProblemDetails:
+      type: object
+      description: RFC 7807 — what the global exception middleware (§10) maps every thrown exception and typed failure to.
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        correlationId: { type: string, format: uuid }
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
