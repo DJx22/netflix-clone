@@ -1,23 +1,66 @@
-var builder = WebApplication.CreateBuilder(args);
+using Identity.Api;
+using Identity.Api.Middleware;
+using Serilog;
 
-// Add services to the container.
+// Bootstrap Serilog early so startup errors are captured in structured format (§13).
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+try
 {
-    app.MapOpenApi();
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Structured logging via Serilog — replaces the default Microsoft logging (§13).
+    builder.Host.UseSerilog((context, services, loggerConfig) =>
+        loggerConfig
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()           // picks up CorrelationId pushed by middleware
+            .Enrich.WithMachineName()
+            .WriteTo.Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {CorrelationId} {Message:lj}{NewLine}{Exception}"));
+
+    // All service registration in one place (§7).
+    builder.Services.AddIdentityServices(builder.Configuration);
+
+    var app = builder.Build();
+
+    // --- Middleware pipeline (order is significant) ---
+
+    // 1. Correlation ID first — must be in LogContext before anything else logs.
+    app.UseMiddleware<CorrelationIdMiddleware>();
+
+    // 2. Global exception handler — catches everything the pipeline throws (§10).
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    // 3. OpenAPI (development only).
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+    }
+
+    // 4. Serilog request logging — logs after correlation ID is in scope.
+    app.UseSerilogRequestLogging();
+
+    // 5. Auth pipeline — must come before MapControllers.
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // 6. Route to controllers.
+    app.MapControllers();
+
+    app.Run();
+}
+catch (Exception ex) when (ex is not HostAbortedException)
+{
+    // Capture fatal startup failures (misconfigured secret, missing connection string, etc.).
+    Log.Fatal(ex, "Identity.Api failed to start");
+}
+finally
+{
+    Log.CloseAndFlush();
 }
 
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+// Expose the implicit Program class for integration test factories.
+public partial class Program { }
