@@ -14,7 +14,7 @@ internal sealed class IdentityDbContextFactory : IDesignTimeDbContextFactory<Ide
     public IdentityDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseSqlServer("Server=localhost;Database=IdentityDb;Trusted_Connection=True;")
+            .UseSqlServer("Server=localhost;Database=IdentityDb;TrustServerCertificate=True;Trusted_Connection=True;")
             .Options;
 
         return new IdentityDbContext(options);

@@ -24,6 +24,10 @@ try
     // All service registration in one place (§7).
     builder.Services.AddIdentityServices(builder.Configuration);
 
+    // Optional Swagger/OpenAPI support for development (§15).
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
     var app = builder.Build();
 
     // --- Middleware pipeline (order is significant) ---
@@ -35,9 +39,11 @@ try
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
     // 3. OpenAPI (development only).
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Local"))
     {
         app.MapOpenApi();
+        app.UseSwagger();
+        app.UseSwaggerUI();
     }
 
     // 4. Serilog request logging — logs after correlation ID is in scope.

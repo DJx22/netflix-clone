@@ -94,12 +94,12 @@ public sealed class AuthController : ControllerBase
     {
         // The JWT middleware has already validated the token by the time we reach here (§12).
         // Extract the subject claim — AuthService.GetCurrentUserAsync handles the DB lookup.
-        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("nameid");
 
         if (!Guid.TryParse(sub, out var userId))
         {
-            // A valid, structurally correct JWT with a non-Guid sub claim should not happen,
-            // but we must not crash or expose internals if it does.
             return Unauthorized();
         }
 

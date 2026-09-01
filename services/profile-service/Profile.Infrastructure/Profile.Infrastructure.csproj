@@ -1,8 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Profile.Domain\Profile.Domain.csproj" />
     <ProjectReference Include="..\Profile.Application\Profile.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.*" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -11,4 +21,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!--
+      InternalsVisibleTo allows Profile.Tests to instantiate internal types
+      (ProfileRepository, ProfileDbContext) directly for real integration tests (§14).
+      This does NOT widen the public API surface of Profile.Infrastructure.
+    -->
+    <InternalsVisibleTo Include="Profile.Tests" />
+  </ItemGroup>
+
 </Project>
+

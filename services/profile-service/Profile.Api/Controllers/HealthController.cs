@@ -1,0 +1,38 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace Profile.Api.Controllers;
+
+/// <summary>
+/// Exposes GET /health as required by §11 and openapi.yaml line 165.
+/// Returns 200 only when the service is ready to serve traffic —
+/// not merely that the process is alive (§11).
+///
+/// The readiness check verifies that ProfileDb is reachable.
+/// A liveness probe (process-alive) is intentionally separate and provided
+/// by the container runtime, not this endpoint.
+/// </summary>
+[ApiController]
+public sealed class HealthController : ControllerBase
+{
+    private readonly HealthCheckService _healthCheckService;
+
+    public HealthController(HealthCheckService healthCheckService)
+    {
+        _healthCheckService = healthCheckService;
+    }
+
+    /// <response code="200">Ready to serve traffic.</response>
+    /// <response code="503">Not ready (DB unreachable or degraded).</response>
+    [HttpGet(Routes.Health)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetHealth(CancellationToken cancellationToken)
+    {
+        var report = await _healthCheckService.CheckHealthAsync(cancellationToken);
+
+        return report.Status == HealthStatus.Healthy
+            ? Ok(new { status = "Healthy" })
+            : StatusCode(StatusCodes.Status503ServiceUnavailable, new { status = report.Status.ToString() });
+    }
+}

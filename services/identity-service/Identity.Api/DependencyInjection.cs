@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -7,7 +8,6 @@ using Identity.Infrastructure;
 using Identity.Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Identity.Api;
@@ -37,29 +37,36 @@ public static class DependencyInjection
         services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
         // --- JWT Bearer authentication (§12) ---
-        // Validates issuer, audience, and expiry. Key is derived from the same
-        // JwtOptions that Infrastructure's JwtTokenService uses — single source of truth.
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        // Validates issuer, audience, and expiry using the same configured key the issuer used.
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
             .AddJwtBearer(options =>
             {
-                // Resolve JwtOptions via the DI container — no IConfiguration["key"] reads.
-                var jwtOptions = services
-                    .BuildServiceProvider()
-                    .GetRequiredService<IOptions<JwtOptions>>()
-                    .Value;
+                var jwtOptions = configuration
+                    .GetSection(JwtOptions.SectionName)
+                    .Get<JwtOptions>() ?? new JwtOptions();
 
+                if (string.IsNullOrWhiteSpace(jwtOptions.Secret))
+                {
+                    throw new InvalidOperationException(
+                        "Jwt:Secret must be configured before the API can validate bearer tokens.");
+                }
+
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer           = true,
-                    ValidateAudience         = true,
-                    ValidateLifetime         = true,
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer              = jwtOptions.Issuer,
-                    ValidAudience            = jwtOptions.Audience,
-                    IssuerSigningKey         = new SymmetricSecurityKey(
-                                                  Encoding.UTF8.GetBytes(jwtOptions.Secret)),
-                    // Zero clock skew: tokens expire exactly when the exp claim says.
-                    // A generous skew here would undermine the 15-minute access token design.
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidAudience = jwtOptions.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtOptions.Secret)),
+                    NameClaimType = JwtRegisteredClaimNames.Sub,
                     ClockSkew = TimeSpan.Zero,
                 };
             });
