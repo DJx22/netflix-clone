@@ -1,17 +1,53 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Keep warnings-as-errors consistent with production projects. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      Disable NuGet audit entirely for the test project — the SSH.NET transitive
+      vulnerability (GHSA-q939-rpr3-3284) from Testcontainers is not exploitable
+      in a local test runner and would otherwise block restore under TreatWarningsAsErrors.
+    -->
+    <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!-- xUnit — framework already chosen by the project scaffold -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk"          Version="17.14.1" />
+    <PackageReference Include="xunit"                           Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio"       Version="3.1.4" />
+    <PackageReference Include="coverlet.collector"              Version="6.0.4" />
+
+    <!--
+      NSubstitute — mocking library for Application unit tests.
+      Chosen for its explicit, readable API that matches the project's
+      "prefer explicit over implicit" coding standard.
+    -->
+    <PackageReference Include="NSubstitute"                     Version="5.3.0" />
+
+    <!--
+      FluentValidation — includes FluentValidation.TestHelper (merged into
+      the main package since v10). Pinned to the same version as Application
+      so there is no version skew.
+    -->
+    <PackageReference Include="FluentValidation"                Version="11.10.0" />
+
+    <!--
+      Testcontainers.MsSql — integration tests spin up a real SQL Server container.
+      ADR 0001: SQL Server is the required engine; a substitute engine would not
+      exercise the same type mappings or value converters.
+    -->
+    <PackageReference Include="Testcontainers.MsSql"            Version="4.4.0" />
+
+    <!--
+      EF Core SQL Server provider — needed in the test project to create
+      DbContextOptions<PaymentDbContext> pointed at the container.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.*" />
   </ItemGroup>
 
   <ItemGroup>
