@@ -17,31 +17,31 @@
 
   <ItemGroup>
     <!-- xUnit — framework already chosen by the project scaffold -->
-    <PackageReference Include="Microsoft.NET.Test.Sdk"          Version="17.14.1" />
-    <PackageReference Include="xunit"                           Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio"       Version="3.1.4" />
-    <PackageReference Include="coverlet.collector"              Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="coverlet.collector" Version="10.0.1" />
 
     <!--
       NSubstitute — mocking library for Application unit tests.
       Chosen for its explicit, readable API that matches the project's
       "prefer explicit over implicit" coding standard.
     -->
-    <PackageReference Include="NSubstitute"                     Version="5.3.0" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
 
     <!--
       FluentValidation — includes FluentValidation.TestHelper (merged into
       the main package since v10). Pinned to the same version as Application
       so there is no version skew.
     -->
-    <PackageReference Include="FluentValidation"                Version="11.10.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
 
     <!--
       Testcontainers.MsSql — integration tests spin up a real SQL Server container.
       ADR 0001: SQL Server is the required engine; a substitute engine would not
       exercise the same type mappings or value converters.
     -->
-    <PackageReference Include="Testcontainers.MsSql"            Version="4.4.0" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.4.0" />
 
     <!--
       EF Core SQL Server provider — needed in the test project to create

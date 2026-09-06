@@ -8,13 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="FluentAssertions" Version="7.*" />
-    <PackageReference Include="FluentValidation" Version="11.*" />
+    <PackageReference Include="coverlet.collector" Version="10.0.1" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
     <!-- SqlServer package lets the fixture call UseSqlServer() on the Testcontainer connection string. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="Moq" Version="4.*" />
+    <PackageReference Include="Moq" Version="4.20.72" />
     <!-- Integration tests run against a real SQL Server container, not mocks (§14). -->
     <PackageReference Include="Testcontainers.MsSql" Version="4.*" />
     <PackageReference Include="xunit" Version="2.9.3" />
