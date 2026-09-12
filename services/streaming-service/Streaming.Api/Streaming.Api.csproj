@@ -4,10 +4,23 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- FluentValidation — auto-validates [FromBody] DTOs before actions run (§12) -->
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.*" />
+    <!-- JWT Bearer authentication — validates issuer, audience, expiry (§12) -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.*" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <!-- EF Core readiness probe — health check returns 200 only when DB is reachable (§11) -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.*" />
+    <!-- Structured logging — replaces the default Microsoft logger (§13) -->
+    <PackageReference Include="Serilog.AspNetCore" Version="9.*" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
+    <!-- Swagger UI for development exploration -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.*" />
   </ItemGroup>
 
   <ItemGroup>

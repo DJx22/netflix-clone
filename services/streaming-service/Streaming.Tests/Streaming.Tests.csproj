@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,7 +9,17 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="10.0.1" />
+    <PackageReference Include="FluentAssertions" Version="8.*" />
+    <PackageReference Include="FluentValidation" Version="12.*" />
+    <!-- Mocking application-layer interfaces in unit tests -->
+    <PackageReference Include="Moq" Version="4.*" />
+    <!-- SqlServer provider lets the fixture call UseSqlServer() on the Testcontainer connection string -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.*" />
+    <!-- NullLogger<T> and ILogger<T> for unit tests -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <!-- Integration tests run against a real SQL Server container, not mocks (§14) -->
+    <PackageReference Include="Testcontainers.MsSql" Version="4.*" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>

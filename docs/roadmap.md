@@ -2,6 +2,8 @@
 
 A self-study build to learn microservices architecture, Docker, Podman, Kubernetes, and Jenkins — using a Netflix-style streaming platform as the vehicle, not the goal. This is a revision of an earlier draft plan, rescoped against your actual constraints (zero prior tool experience, 8GB RAM, 5–10 hrs/week, no frontend).
 
+> **Revision note.** Streaming stalled in Phase 1 while trying to settle its persistence design. Redis appeared in the original Phase 0 tech-stack table as a "playback-position cache," but no ADR was ever written to back that choice, and two questions (persistence mode, retention rationale) went unanswered when the actual repository design came up. ADR 0006 is now written directly against SQL Server + Azurite instead — see `docs/adr/0006-streaming-data-store.md`.
+
 ## 0. Ground rules
 
 - **6 services are the vehicle. Docker → Podman → Kubernetes → Jenkins, in that order, is the point.** Don't let service count creep before the pipeline is proven.
@@ -34,20 +36,19 @@ A self-study build to learn microservices architecture, Docker, Podman, Kubernet
 | 3 | Catalog | Movie/show metadata, genres, search | MongoDB | The one service using Mediator/CQRS — heavy reads, occasional writes, per your own standards doc §6 |
 | 4 | Subscription | Plans, entitlements, plan changes | SQL Server (shared instance, own DB) | Consumes `PaymentCompleted` event via RabbitMQ |
 | 5 | Payment | Mock billing, invoices | SQL Server (shared instance, own DB) | In-process mock (random success/fail), **not** real Stripe test mode — one less external account/network dependency to manage alongside everything else |
-| 6 | Streaming/Playback | Serves manifests/chunks, tracks position | Azurite (local Blob emulator) + Redis | Real Azure Blob Storage only if/when you do Phase 9 |
+| 6 | Streaming/Playback | Serves media location, tracks playback position | SQL Server (shared instance, own DB) + Azurite (blob emulator) | Plain CRUD, like Profile — no bespoke persistence pattern. See ADR 0006. Real Azure Blob Storage only if/when you do Phase 9 |
 
 **Expansion (Phase 8, don't build yet):** Recommendation, Watch History, Notification, Search, Reviews/Ratings, Admin/CMS.
 
-**"One database per service" still holds** even though four services share one SQL Server *container* — each gets its own logical database, no service queries another's DB directly. What you're saving is four separate SQL Server engine processes (~1.4GB+ each), not the isolation itself.
+**"One database per service" still holds** even though five services share one SQL Server *container* — each gets its own logical database, no service queries another's DB directly. What you're saving is five separate SQL Server engine processes (~1.4GB+ each), not the isolation itself.
 
 ## 3. Tech stack — and why it diverges from a "textbook" build
 
 | Layer | Choice | Reasoning |
 |---|---|---|
 | Framework | ASP.NET Core, .NET 10 (LTS) | .NET 8 goes end-of-support Nov 2026 — starting a multi-month project on it now just guarantees a mid-project migration |
-| Relational data | One SQL Server 2022 container, 4 logical DBs | RAM budget — see §2 |
+| Relational data | One SQL Server 2022 container, 5 logical DBs | RAM budget — see §2 |
 | Document data | MongoDB, own container | Catalog only |
-| Cache | Redis, own container | Playback-position cache |
 | Blob storage | Azurite (emulator), own container | Avoids an Azure account/cost dependency for a phase that doesn't need one |
 | Messaging | RabbitMQ, own container, raw `RabbitMQ.Client` | MassTransit hides the exact mechanics you're trying to learn — revisit it later, once you know what it wraps |
 | Gateway | YARP | .NET-native, actively maintained by Microsoft — one less unfamiliar stack on top of everything else new |
@@ -56,6 +57,8 @@ A self-study build to learn microservices architecture, Docker, Podman, Kubernet
 | CI/CD | Jenkins, containerized, on-demand | Started manually before a session, stopped after — not a background service |
 | Registry | Docker Hub, public repos, free tier | No Azure budget confirmed; revisit ACR only if Phase 9 happens |
 | Observability | `/health` → K8s probes (Phase 5+); Serilog + Seq (Phase 7) | Prometheus/Grafana stays a stretch goal, not core |
+
+**Redis is not part of the stack.** It appeared in early scoping as a "cache" candidate for Streaming's playback position, but no ADR ever backed that before implementation reached the point of actually designing the repository. ADR 0006 records the decision to use SQL Server instead, with Redis addressed under its Alternatives Considered — see `docs/adr/0006-streaming-data-store.md`.
 
 ## 4. Tool learning order — the actual dependency chain
 
@@ -110,7 +113,7 @@ No `frontend/` directory — there isn't one.
 |---|---|---|---|
 | 0 | Foundations | 1–2 weeks | OpenAPI spec written per service; `new-service` scaffold script works |
 | 1 | Core services, no containers | 5–7 weeks | Register → profile → pick plan → pay → browse catalog, all via Swagger, no containers involved |
-| 2 | Dockerize | 3–4 weeks | `docker compose up` brings up all 6 services + SQL Server + MongoDB + Redis + Azurite from cold, zero manual steps |
+| 2 | Dockerize | 3–4 weeks | `docker compose up` brings up all 6 services + SQL Server + MongoDB + Azurite from cold, zero manual steps |
 | 3 | Podman parity | 1 week | Same stack under `podman-compose`; you can name 2–3 real differences you personally hit, not textbook ones |
 | 4 | Gateway + RabbitMQ | 3–4 weeks | Postman only ever calls the gateway; `PaymentCompleted` → `SubscriptionActivated` happens with zero direct HTTP call between those two services |
 | 5 | Kubernetes (local) | 5–7 weeks | Kill a pod, watch it self-heal; `kubectl scale` works; the full stack fits and runs inside your 8GB budget |
@@ -131,11 +134,11 @@ No `frontend/` directory — there isn't one.
 **Phase 1 — Core services, no containers**
 - Plain ASP.NET Core Web APIs over HTTP, no Docker yet
 - Full "sign up → browse catalog" flow working through Postman/Swagger before touching a Dockerfile
-- Catalog gets Mediator/CQRS; everything else stays plain CRUD
+- Catalog gets Mediator/CQRS; everything else — Identity, Profile, Subscription, Payment, and Streaming — stays plain CRUD
 
 **Phase 2 — Dockerize**
 - One multi-stage Dockerfile per service (SDK image → runtime image)
-- `docker-compose.yml` wiring all 6 services + the single SQL Server container + MongoDB + Redis + Azurite
+- `docker-compose.yml` wiring all 6 services + the single SQL Server container + MongoDB + Azurite
 - First real contact with the WSL2 memory cap from §5 — expect to hit it
 
 **Phase 3 — Podman parity**
@@ -170,37 +173,21 @@ No `frontend/` directory — there isn't one.
 ## 9. Scope guardrails
 
 - **Streaming ≠ video engineering.** No live transcoding. Encode a handful of sample clips once with ffmpeg, store in Azurite, serve via HTTP range requests. The lesson is service design, not codec work.
+- **Streaming's persistence is plain CRUD, not a caching exercise.** Playback positions and media metadata both live in SQL Server (`StreamingDb`), the same pattern as Profile — see ADR 0006. Don't reintroduce Redis, or any other non-relational store, into this service later without weighing the trade-offs ADR 0006 already worked through; "it would be more realistic" is not a reason, per §0 of this roadmap.
 - **Payment is a mock, not a Stripe integration.** In-process success/fail simulation — the point is the event it emits, not third-party API mechanics.
 - **Auth: your own JWT issuance.** Keycloak/Auth0 is a deliberate later exercise, not a Phase 0 dependency.
 - **CQRS lives in Catalog only.** Applying it everywhere adds ceremony without teaching you anything new twice.
 
-## 10. Weekly checkpoint habit
+## 10. Open items — not resolved, don't treat this file as if they are
 
-A log only works as accountability if something is actually watching it — a private file nobody opens is documentation, not a forcing function. Pick one:
-
-- **Public with real readers**: a weekly post somewhere with actual traffic — a subreddit (r/dotnet, r/Kubernetes), a Discord/Slack study group, or LinkedIn. Silence is visible there in a way a private repo never makes it.
-- **Public but low-traffic**: a `DEVLOG.md` in the repo, linked from the README, one dated entry per week — only works as accountability if you also name one specific person who'll spot-check it occasionally. Without that person, it defaults back to plain documentation.
-
-Same format and cadence either way:
-
-- **Cadence**: same day every week — Sunday evening works well, since it reflects the week just finished and sets up the next one before Monday. A missed entry is the actual signal to watch for, more than anything written in the entries themselves.
-- **Entry template** (keep each one under 5 lines):
-  ```
-  ## Week of <date>
-  Done: <what actually shipped — not "worked on X">
-  Blocked: <what stopped you, if anything>
-  Next: <one concrete thing for next week>
-  Phase: <current phase from §7 — on track / N weeks behind estimate>
-  ```
-- **Tie it to §7, not vibes.** "On track for Phase 2" or "3 weeks behind the Phase 1 estimate" is a real data point against the phase table above. "Made progress" is not — don't let entries drift into that.
-
-## 11. Open items — not resolved, don't treat this file as if they are
-
+- **Streaming/Catalog metadata boundary is undecided.** Catalog owns descriptive title metadata (name, genre, search). Streaming's spec now owns its own metadata (`mediaUrl`, `contentType`, `durationSeconds`) in `StreamingDb`. Nothing decides whether `GET /media` validates `titleId` against Catalog's API or just trusts the caller — ADR 0006 explicitly scopes this out. Pin it down before you build the endpoint, not after.
+- **Playback-position retention policy** — not decided; see ADR 0006's open questions. If it's ever a real requirement, budget for a scheduled cleanup job; SQL Server won't do it for you for free.
+- **If you want real Redis exposure later, do it deliberately.** A good candidate is YARP-level response caching or rate-limiting in Phase 4 — a case where Redis solves a stated problem, not a data store bolted onto a service that didn't need one. Don't smuggle it back into Streaming without re-litigating the trade-offs ADR 0006 already weighed.
 - **Phase 9 / Azure budget.** Cloud stretch needs either your own Azure subscription or a decision to skip it outright. Not decided.
-- **Log venue.** §10 gives you the two shapes an accountability habit can take; which specific place (subreddit, Discord, a named person) is still yours to pick.
+- **Consistency risk.** 6–7 months, solo, part-time, is a long runway with no external accountability. Worth deciding *now* whether you want a weekly log, a public repo with visible commit history, or some other forcing function — that's a bigger risk to this plan actually finishing than any technical unknown above it.
 - **RabbitMQ scope.** "Included in core phases" is decided; exact depth isn't — a working producer/consumer pair is very different from adding dead-letter queues and retry topology. Worth pinning down when you're actually in Phase 4, not now.
 
-## 12. Prerequisites checklist
+## 11. Prerequisites checklist
 
 - [ ] .NET 10 SDK
 - [ ] Docker Desktop (WSL2 backend)
@@ -212,7 +199,7 @@ Same format and cadence either way:
 - [ ] Postman
 - [ ] Docker Hub account (public repos)
 
-## 13. Working with your AI IDE
+## 12. Working with your AI IDE
 
 - Scaffold one service per prompt, not the whole platform at once — feed it that service's OpenAPI contract plus `csharp-coding-standard.md` as context
 - For Dockerfiles and K8s manifests specifically, ask it to explain each line back to you before accepting — the point is understanding, not just working YAML
