@@ -11,6 +11,7 @@ correct decision for Phase 1–3 that will become incorrect in a later phase.
 | [§EF-FindAsync-Syntax](#ef-findasync-syntax) | Any EF Core downgrade | Build break at runtime |
 | [§NoMediaIngestionEndpoint](#nomediaingestionendpoint) | Any new ingestion endpoint | Dead code gap |
 | [§CatalogBoundary](#catalogboundary) | Any fallback-source proposal | Architectural boundary violation |
+| [§BlobHealthCheck](#blobhealthcheck) | Blob-backed readiness or production playback | `/health` can be green while Azure Blob/Azurite is unavailable |
 
 ---
 
@@ -185,3 +186,35 @@ GetMediaAsync_CatalogFoundTitle_NeverManufacturesMediaResponse
 
 If a future requirement proposes using Catalog metadata to construct a `MediaResponse`,
 that requires a formal ADR revision, not a code change in the current architecture.
+
+---
+
+## §BlobHealthCheck — Streaming readiness checks SQL Server but not Azure Blob/Azurite
+
+**Affects:** `Streaming.Api` health registration and `GET /health`
+
+**Phase trigger:** Any phase where blob availability is part of Streaming readiness,
+or before production playback depends on Azure Blob Storage.
+
+**Detail:**
+
+The current Streaming health registration contains only:
+
+```csharp
+services.AddHealthChecks()
+  .AddDbContextCheck<StreamingDbContext>("streaming-db");
+```
+
+Therefore, `GET /health` confirms that SQL Server is reachable through
+`StreamingDbContext`, but it does not call Azure Blob Storage or Azurite. The endpoint
+can return HTTP 200 while the configured media blob URL is unavailable.
+
+This is an intentional Phase 1–3 limitation because Streaming currently stores the
+media URL and metadata in SQL and has no registered `BlobServiceClient` or Blob health
+check. It should not be interpreted as proof that media bytes are reachable.
+
+**Action before the phase trigger:** Register the Azure Blob/Azurite client and add a
+separate Blob health check that performs a lightweight operation against the configured
+media container. Decide whether blob failure should make readiness return 503 or be
+reported as a separate degraded dependency, then add an integration test covering both
+SQL and Blob availability.
