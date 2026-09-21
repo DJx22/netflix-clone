@@ -107,6 +107,37 @@ netflix-clone/
 
 No `frontend/` directory — there isn't one.
 
+### Compose placement and purpose
+
+The main Compose file belongs at the repository root:
+
+```text
+netflix-clone/docker-compose.yml
+```
+
+Compose is needed for the local platform because the application consists of six
+API services and shared infrastructure: SQL Server, MongoDB, and Azurite. A root
+Compose file gives the whole platform one network, shared environment configuration,
+service discovery by container name, persistent volumes, and one startup command:
+
+```powershell
+docker compose up -d
+```
+
+The root Compose file should build or run all six service images and define the
+infrastructure containers required by the current phase. RabbitMQ belongs there
+when Phase 4 messaging is implemented.
+
+A service-level Compose file, such as
+`services/profile-service/docker-compose.yml`, is optional and is only useful for
+running one service in isolation during development. It should not replace the
+root file because that would duplicate infrastructure configuration and prevent a
+single command from starting the complete platform.
+
+Compose files do not belong under `k8s/`. That directory is reserved for Kubernetes
+manifests, which describe the deployment using Kubernetes Deployments, Services,
+ConfigMaps, Secrets, and probes rather than Docker Compose services.
+
 ## 7. Phased roadmap
 
 | Phase | Focus | Est. duration @ 5–10 hrs/wk | Done when |
@@ -139,6 +170,7 @@ No `frontend/` directory — there isn't one.
 **Phase 2 — Dockerize**
 - One multi-stage Dockerfile per service (SDK image → runtime image)
 - `docker-compose.yml` wiring all 6 services + the single SQL Server container + MongoDB + Azurite
+- Docker setup and run instructions: [`docs/docker-setup/README.md`](docker-setup/README.md)
 - First real contact with the WSL2 memory cap from §5 — expect to hit it
 
 **Phase 3 — Podman parity**

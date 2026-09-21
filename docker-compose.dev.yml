@@ -1,0 +1,19 @@
+services:
+  identity-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+  profile-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+  catalog-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+  subscription-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+  payment-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+  streaming-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development

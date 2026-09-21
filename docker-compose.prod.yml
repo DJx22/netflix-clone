@@ -1,0 +1,33 @@
+name: netflix-clone-prod
+
+services:
+  identity-service:
+    build: null
+    image: ${IDENTITY_IMAGE:?Set IDENTITY_IMAGE to a published image}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+  profile-service:
+    build: null
+    image: ${PROFILE_IMAGE:?Set PROFILE_IMAGE to a published image}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+  catalog-service:
+    build: null
+    image: ${CATALOG_IMAGE:?Set CATALOG_IMAGE to a published image}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+  subscription-service:
+    build: null
+    image: ${SUBSCRIPTION_IMAGE:?Set SUBSCRIPTION_IMAGE to a published image}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+  payment-service:
+    build: null
+    image: ${PAYMENT_IMAGE:?Set PAYMENT_IMAGE to a published image}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+  streaming-service:
+    build: null
+    image: ${STREAMING_IMAGE:?Set STREAMING_IMAGE to a published image}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production

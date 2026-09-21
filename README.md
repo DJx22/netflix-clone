@@ -207,6 +207,8 @@ curl -s -X POST http://localhost:5001/api/v1/auth/register \
 - `docker-compose.yml` bringing all 6 services + SQL Server + MongoDB + Azurite from cold.
 - First real contact with the WSL2 memory cap — see [`docs/roadmap.md §5`](docs/roadmap.md).
 
+Docker setup and run instructions: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
+
 ---
 
 ## Layout

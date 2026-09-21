@@ -1,0 +1,35 @@
+name: netflix-clone-test
+
+services:
+  identity-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ConnectionStrings__IdentityDb: Server=sqlserver,1433;Database=IdentityDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+  profile-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ConnectionStrings__ProfileDb: Server=sqlserver,1433;Database=ProfileDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+  catalog-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      MongoDb__DatabaseName: CatalogDb_Test
+  subscription-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ConnectionStrings__SubscriptionDb: Server=sqlserver,1433;Database=SubscriptionDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+  payment-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ConnectionStrings__PaymentDb: Server=sqlserver,1433;Database=PaymentDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+  streaming-service:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ConnectionStrings__StreamingDb: Server=sqlserver,1433;Database=StreamingDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+
+volumes:
+  sqlserver-data:
+    name: netflix-clone-test-sqlserver-data
+  mongodb-data:
+    name: netflix-clone-test-mongodb-data
+  azurite-data:
+    name: netflix-clone-test-azurite-data

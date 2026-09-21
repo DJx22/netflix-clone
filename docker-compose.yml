@@ -1,0 +1,158 @@
+name: netflix-clone
+
+services:
+  identity-service:
+    image: ${IDENTITY_IMAGE:-identity-service:test}
+    build:
+      context: ./services/identity-service
+      dockerfile: Dockerfile.identity.service
+    environment:
+      ASPNETCORE_URLS: http://+:5001
+      ConnectionStrings__IdentityDb: ${IDENTITY_DB_CONNECTION:-Server=sqlserver,1433;Database=IdentityDb;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True}
+      Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
+      Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+    ports:
+      - "5001:5001"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  profile-service:
+    image: ${PROFILE_IMAGE:-profile-service:test}
+    build:
+      context: ./services/profile-service
+      dockerfile: Dockerfile.profile.service
+    environment:
+      ASPNETCORE_URLS: http://+:5002
+      ConnectionStrings__ProfileDb: ${PROFILE_DB_CONNECTION:-Server=sqlserver,1433;Database=ProfileDb;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True}
+      Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
+      Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+    ports:
+      - "5002:5002"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  catalog-service:
+    image: ${CATALOG_IMAGE:-catalog-service:test}
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile.catalog.service
+    environment:
+      ASPNETCORE_URLS: http://+:5005
+      MongoDb__ConnectionString: ${CATALOG_MONGO_CONNECTION:-mongodb://mongodb:27017}
+      MongoDb__DatabaseName: ${CATALOG_MONGO_DATABASE:-CatalogDb}
+      MongoDb__TitlesCollectionName: titles
+      Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
+      Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+    ports:
+      - "5005:5005"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  subscription-service:
+    image: ${SUBSCRIPTION_IMAGE:-subscription-service:test}
+    build:
+      context: ./services/subscription-service
+      dockerfile: Dockerfile.subscription.service
+    environment:
+      ASPNETCORE_URLS: http://+:5003
+      ConnectionStrings__SubscriptionDb: ${SUBSCRIPTION_DB_CONNECTION:-Server=sqlserver,1433;Database=SubscriptionDb;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True}
+      Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
+      Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+    ports:
+      - "5003:5003"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  payment-service:
+    image: ${PAYMENT_IMAGE:-payment-service:test}
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile.payment.service
+    environment:
+      ASPNETCORE_URLS: http://+:5004
+      ConnectionStrings__PaymentDb: ${PAYMENT_DB_CONNECTION:-Server=sqlserver,1433;Database=PaymentDb;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True}
+      SubscriptionService__BaseUrl: ${SUBSCRIPTION_SERVICE_URL:-http://subscription-service:5003}
+      Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
+      Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+    ports:
+      - "5004:5004"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      subscription-service:
+        condition: service_started
+
+  streaming-service:
+    image: ${STREAMING_IMAGE:-streaming-service:test}
+    build:
+      context: ./services/streaming-service
+      dockerfile: Dockerfile.streaming.service
+    environment:
+      ASPNETCORE_URLS: http://+:5006
+      ConnectionStrings__StreamingDb: ${STREAMING_DB_CONNECTION:-Server=sqlserver,1433;Database=StreamingDb;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True}
+      CatalogClient__BaseUrl: ${CATALOG_SERVICE_URL:-http://catalog-service:5005}
+      Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
+      Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+    ports:
+      - "5006:5006"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      catalog-service:
+        condition: service_started
+      azurite:
+        condition: service_started
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:-YourStr0ngPassw0rd!}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/1433'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' localhost:27017/test | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite-data:/data
+
+volumes:
+  sqlserver-data:
+  mongodb-data:
+  azurite-data:
