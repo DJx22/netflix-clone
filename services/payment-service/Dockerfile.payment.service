@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+COPY Payment.Api/Payment.Api.csproj Payment.Api/
+COPY Payment.Application/Payment.Application.csproj Payment.Application/
+COPY Payment.Domain/Payment.Domain.csproj Payment.Domain/
+COPY Payment.Infrastructure/Payment.Infrastructure.csproj Payment.Infrastructure/
+
+RUN dotnet restore Payment.Api/Payment.Api.csproj
+
+COPY . .
+RUN dotnet publish Payment.Api/Payment.Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:5004
+
+COPY --from=build /app/publish .
+
+EXPOSE 5004
+
+ENTRYPOINT ["dotnet", "Payment.Api.dll"]
