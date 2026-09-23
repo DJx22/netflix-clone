@@ -38,6 +38,36 @@ The service Dockerfiles remain under their service directories:
 services/<service>/Dockerfile.<service>.service
 ```
 
+## Development and QA database initialization
+
+The five SQL-backed APIs run `Database.MigrateAsync()` during startup only when
+`ASPNETCORE_ENVIRONMENT` is `Development` or `Testing`:
+
+- Identity
+- Profile
+- Subscription
+- Payment
+- Streaming
+
+EF checks `__EFMigrationsHistory` and applies only pending migrations. An empty
+database receives the complete migration history; an already-current database is
+left unchanged. Production does not run application-startup migrations.
+
+The development and QA Compose overlays start services in this order:
+
+```text
+SQL Server -> Identity -> Profile -> Subscription -> Payment -> Catalog -> Streaming
+```
+
+The next API waits for the previous API's container health check. Each API's
+health check verifies that its listener is active. Because migrations run before
+`app.Run()`, a healthy API has completed its development/QA migration step.
+
+Catalog does not use EF migrations. It creates its MongoDB indexes idempotently at
+startup. MongoDB creates databases and collections when data is first written.
+Azurite has no database migration system; it only needs blob-container creation
+when the Streaming service begins using Blob Storage.
+
 ## Docker files created
 
 The Docker setup consists of one Dockerfile and one `.dockerignore` file per API,

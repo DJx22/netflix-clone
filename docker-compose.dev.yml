@@ -5,15 +5,30 @@ services:
   profile-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      identity-service:
+        condition: service_healthy
   catalog-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      payment-service:
+        condition: service_healthy
   subscription-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      profile-service:
+        condition: service_healthy
   payment-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      subscription-service:
+        condition: service_healthy
   streaming-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      catalog-service:
+        condition: service_healthy

@@ -1,6 +1,8 @@
 using Serilog;
 using Streaming.Api;
 using Streaming.Api.Middleware;
+using Streaming.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 // Bootstrap Serilog early so startup errors are captured in structured format (§13).
 Log.Logger = new LoggerConfiguration()
@@ -51,6 +53,13 @@ try
 
     // 6. Route to controllers.
     app.MapControllers();
+
+    if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StreamingDbContext>();
+        await db.Database.MigrateAsync();
+    }
 
     app.Run();
 }

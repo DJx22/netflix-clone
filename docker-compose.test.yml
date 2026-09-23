@@ -9,22 +9,37 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
       ConnectionStrings__ProfileDb: Server=sqlserver,1433;Database=ProfileDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+    depends_on:
+      identity-service:
+        condition: service_healthy
   catalog-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
       MongoDb__DatabaseName: CatalogDb_Test
+    depends_on:
+      payment-service:
+        condition: service_healthy
   subscription-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
       ConnectionStrings__SubscriptionDb: Server=sqlserver,1433;Database=SubscriptionDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+    depends_on:
+      profile-service:
+        condition: service_healthy
   payment-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
       ConnectionStrings__PaymentDb: Server=sqlserver,1433;Database=PaymentDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+    depends_on:
+      subscription-service:
+        condition: service_healthy
   streaming-service:
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
       ConnectionStrings__StreamingDb: Server=sqlserver,1433;Database=StreamingDb_Test;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True
+    depends_on:
+      catalog-service:
+        condition: service_healthy
 
 volumes:
   sqlserver-data:

@@ -1,6 +1,8 @@
 using Serilog;
 using Subscription.Api;
 using Subscription.Api.Middleware;
+using Subscription.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 // Bootstrap Serilog early so startup errors are captured in structured format (§13).
 Log.Logger = new LoggerConfiguration()
@@ -55,6 +57,13 @@ try
 
     // 6. Route to controllers.
     app.MapControllers();
+
+    if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SubscriptionDbContext>();
+        await db.Database.MigrateAsync();
+    }
 
     app.Run();
 }
