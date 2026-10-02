@@ -71,6 +71,7 @@ catch (Exception ex) when (ex is not HostAbortedException)
 {
     // Capture fatal startup failures (misconfigured secret, missing connection string, etc.).
     Log.Fatal(ex, "Subscription.Api failed to start");
+    Environment.ExitCode = 1;
 }
 finally
 {

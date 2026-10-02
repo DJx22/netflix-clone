@@ -165,16 +165,7 @@ VALUES (
 
 ### 3. Subscription plans (SQL Server `SubscriptionDb`)
 
-Plans are reference data. Seed once:
-
-```sql
--- Run against SubscriptionDb
-INSERT INTO Plans (PlanId, Name, PriceAmount, PriceCurrency, MaxProfiles, VideoQuality)
-VALUES
-  ('basic',    'Basic',    9.99,  'USD', 1, 'SD'),
-  ('standard', 'Standard', 14.99, 'USD', 2, 'HD'),
-  ('premium',  'Premium',  19.99, 'USD', 4, 'UHD');
-```
+Plans are seeded by an EF migration when the subscription database is first created in Development or Testing. The database stores prices as `PriceMonthly`; the API treats them as the default currency (USD).
 
 ### 4. Identity — accounts
 
@@ -193,7 +184,7 @@ curl -s -X POST http://localhost:5001/api/v1/auth/register \
 | `IdentityDb.Accounts` | `POST /api/v1/auth/register` |
 | `ProfileDb.Profiles` | `POST /api/v1/profiles` (after login) |
 | `CatalogDb.titles` | `POST /api/v1/titles` (after login) |
-| `SubscriptionDb.Plans` | SQL INSERT (step 3 above) |
+| `SubscriptionDb.Plans` | Seeded once by the subscription database migrations |
 | `SubscriptionDb.Subscriptions` | `POST /api/v1/subscriptions` (after login + plan seeded) |
 | `PaymentDb.Payments` | Created internally when subscription is created |
 | `StreamingDb.MediaAssets` | SQL INSERT (step 2 above) |
