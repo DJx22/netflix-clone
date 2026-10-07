@@ -223,10 +223,13 @@ Podman caused significant performance issues in the current environment, so this
 is deferred. It may be reconsidered after the planned phases are complete; see
 [`docs/adr/0008-defer-podman-parity.md`](docs/adr/0008-defer-podman-parity.md).
 
-## 🔜 Next — Phase 4: Gateway + RabbitMQ
+## 🔜 Next — Phase 4: RabbitMQ (gateway deferred)
 
-Add the API gateway and event-driven payment-to-subscription activation flow. The
-Dockerized platform remains documented here: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
+Add the event-driven payment-to-subscription activation flow. The API gateway is
+deferred due to the current RAM budget; see
+[`docs/adr/0009-defer-api-gateway.md`](docs/adr/0009-defer-api-gateway.md) and its
+[backlog](docs/backlogs/api-gateway.md). The Dockerized platform remains
+documented here: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
 
 ---
 
@@ -243,4 +246,5 @@ Dockerized platform remains documented here: [`docs/docker-setup/README.md`](doc
 | `docs/adr/` | Architecture decision records |
 | `docs/roadmap.md` | Phased plan, tool order, scope guardrails |
 | `docs/backlogs/` | Phase-deferred decisions with explicit trigger criteria |
-| `gateway/`, `k8s/`, `jenkins/` | Empty — reserved for Phases 4, 5, 6 |
+| `gateway/` | Deferred — see the API gateway backlog |
+| `k8s/`, `jenkins/` | Reserved for Phases 5 and 6 |
