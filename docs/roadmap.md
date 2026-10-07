@@ -145,7 +145,7 @@ ConfigMaps, Secrets, and probes rather than Docker Compose services.
 | 0 | Foundations | 1–2 weeks | OpenAPI spec written per service; `new-service` scaffold script works |
 | 1 | Core services, no containers | 5–7 weeks | Register → profile → pick plan → pay → browse catalog, all via Swagger, no containers involved |
 | 2 | Dockerize | 3–4 weeks | `docker compose up` brings up all 6 services + SQL Server + MongoDB + Azurite from cold, zero manual steps |
-| 3 | Podman parity | 1 week | Same stack under `podman-compose`; you can name 2–3 real differences you personally hit, not textbook ones |
+| 3 | Podman parity — deferred | 1 week | Revisit after the planned phases; run the stack under Podman and document concrete differences if it becomes worthwhile |
 | 4 | Gateway + RabbitMQ | 3–4 weeks | Postman only ever calls the gateway; `PaymentCompleted` → `SubscriptionActivated` happens with zero direct HTTP call between those two services |
 | 5 | Kubernetes (local) | 5–7 weeks | Kill a pod, watch it self-heal; `kubectl scale` works; the full stack fits and runs inside your 8GB budget |
 | 6 | Jenkins CI/CD | 3–4 weeks | `git push` → a manually-started Jenkins container runs build → test → containerize → push → deploy with no manual steps in between |
@@ -153,7 +153,7 @@ ConfigMaps, Secrets, and probes rather than Docker Compose services.
 | 8 | Expansion services | Open-ended | Add from the expansion list once Phases 0–7 are solid |
 | 9 | Cloud stretch | Optional, unscheduled | Same manifests on AKS — see open items below |
 
-**Phases 0–7 total: roughly 23–32 weeks — call it 6–7 months at 5–10 hrs/week.** That's a real estimate, not a rounded-down one — it assumes zero prior exposure to Docker, Podman, Kubernetes, or Jenkins, which is what you told me. Phase 1 (six services' worth of boilerplate) and Phase 5 (Kubernetes) are where this is most likely to run long; budget slack there first.
+**Phases 0–7 total: roughly 22–31 weeks, excluding deferred Phase 3 — call it 5–7 months at 5–10 hrs/week.** That's a real estimate, not a rounded-down one — it assumes zero prior exposure to Docker, Podman, Kubernetes, or Jenkins, which is what you told me. Phase 1 (six services' worth of boilerplate) and Phase 5 (Kubernetes) are where this is most likely to run long; budget slack there first.
 
 ## 8. Phase detail
 
@@ -173,9 +173,10 @@ ConfigMaps, Secrets, and probes rather than Docker Compose services.
 - Docker setup and run instructions: [`docs/docker-setup/README.md`](docker-setup/README.md)
 - First real contact with the WSL2 memory cap from §5 — expect to hit it
 
-**Phase 3 — Podman parity**
-- `podman-compose up` (or `podman play kube` after a first-draft K8s YAML)
-- Document what's actually different on Windows specifically — see the caveat in §5 before you write this up
+**Phase 3 — Podman parity (deferred)**
+- Skipped for now due to significant performance issues in the current environment; see [`docs/adr/0008-defer-podman-parity.md`](adr/0008-defer-podman-parity.md)
+- Revisit after the planned phases are complete and add Podman parity to the backlog if it is still valuable
+- Continue with Phase 4; Docker Compose remains the local container workflow
 
 **Phase 4 — Gateway & RabbitMQ**
 - YARP in front of every service; Postman never calls a service directly again
