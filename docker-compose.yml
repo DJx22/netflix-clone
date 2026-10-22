@@ -188,7 +188,35 @@ services:
     volumes:
       - azurite-data:/data
 
+  # ── Phase 4: RabbitMQ message broker ─────────────────────────────────────────
+  # rabbitmq:3-management ships the management plugin at port 15672 — no extra
+  # image tag needed.  Credentials are injected via env vars so they are easy to
+  # override in CI without touching this file.  The named volume persists the
+  # Mnesia database across container restarts, which prevents message loss during
+  # local development cycles.
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    ports:
+      # AMQP protocol port — used by Payment publisher and Subscription consumer.
+      - "5672:5672"
+      # Management UI — reachable at http://localhost:15672 after `docker compose up`.
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      # rabbitmq-diagnostics ping is the canonical lightweight liveness probe;
+      # it exercises the Erlang node without requiring a full broker start.
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
 volumes:
   sqlserver-data:
   mongodb-data:
   azurite-data:
+  rabbitmq-data:
