@@ -1,0 +1,14 @@
+# Build output and intermediate files
+**/bin/
+**/obj/
+[bB]in
+[oO]bj
+
+# .http based files
+*.http
+
+# Setting files
+
+
+# Swagger Contract
+*.yaml

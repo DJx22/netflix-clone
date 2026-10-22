@@ -1,8 +1,8 @@
 # Netflix-Style Microservices — Learning Project
 
-Backend-only, API-first, 6-service microservices build used to learn Docker, Podman,
-Kubernetes, and Jenkins from zero. No frontend — every service is verified through
-Postman/Swagger.
+Backend-only, API-first, 6-service microservices build used to learn Docker,
+Kubernetes, and Jenkins from zero. Podman parity is deferred. No frontend — every
+service is verified through Postman/Swagger.
 
 Full plan: [`docs/roadmap.md`](docs/roadmap.md). Code-level conventions:
 [`csharp-coding-standard.md`](csharp-coding-standard.md).
@@ -61,6 +61,31 @@ Every service has a `*.Tests` project:
 | [`docs/roadmap.md`](docs/roadmap.md) | Full phased plan |
 | [`docs/backlogs/streaming-service-deferrals.md`](docs/backlogs/streaming-service-deferrals.md) | Known Phase 1–3 deferrals with explicit phase-trigger criteria |
 | `services/streaming-service/docs/backlog.md` | Streaming-specific code-level flags (EF10 syntax, concurrent upsert race) |
+
+---
+
+## ✅ Phase 2 — Dockerized stack, complete
+
+The platform is now containerized and boots from cold with Docker Compose: all six services,
+SQL Server, MongoDB, and Azurite are brought up through the repo-level compose files.
+Development, QA, and production-shaped overlays are in place, and each API publishes its
+container image from a service-local multi-stage Dockerfile.
+
+### Compose workflow
+
+```powershell
+# Development stack
+cd <repo-root>
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+# Inspect health/status
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+
+# Tear down everything
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
+```
+
+The Docker setup guide is here: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
 
 ---
 
@@ -165,16 +190,7 @@ VALUES (
 
 ### 3. Subscription plans (SQL Server `SubscriptionDb`)
 
-Plans are reference data. Seed once:
-
-```sql
--- Run against SubscriptionDb
-INSERT INTO Plans (PlanId, Name, PriceAmount, PriceCurrency, MaxProfiles, VideoQuality)
-VALUES
-  ('basic',    'Basic',    9.99,  'USD', 1, 'SD'),
-  ('standard', 'Standard', 14.99, 'USD', 2, 'HD'),
-  ('premium',  'Premium',  19.99, 'USD', 4, 'UHD');
-```
+Plans are seeded by an EF migration when the subscription database is first created in Development or Testing. The database stores prices as `PriceMonthly`; the API treats them as the default currency (USD).
 
 ### 4. Identity — accounts
 
@@ -193,7 +209,7 @@ curl -s -X POST http://localhost:5001/api/v1/auth/register \
 | `IdentityDb.Accounts` | `POST /api/v1/auth/register` |
 | `ProfileDb.Profiles` | `POST /api/v1/profiles` (after login) |
 | `CatalogDb.titles` | `POST /api/v1/titles` (after login) |
-| `SubscriptionDb.Plans` | SQL INSERT (step 3 above) |
+| `SubscriptionDb.Plans` | Seeded once by the subscription database migrations |
 | `SubscriptionDb.Subscriptions` | `POST /api/v1/subscriptions` (after login + plan seeded) |
 | `PaymentDb.Payments` | Created internally when subscription is created |
 | `StreamingDb.MediaAssets` | SQL INSERT (step 2 above) |
@@ -201,11 +217,16 @@ curl -s -X POST http://localhost:5001/api/v1/auth/register \
 
 ---
 
-## 🔜 Next — Phase 2: Dockerize
+## ⏭️ Phase 3 — Podman parity deferred
 
-- One multi-stage `Dockerfile` per service (SDK image → runtime image).
-- `docker-compose.yml` bringing all 6 services + SQL Server + MongoDB + Azurite from cold.
-- First real contact with the WSL2 memory cap — see [`docs/roadmap.md §5`](docs/roadmap.md).
+Podman caused significant performance issues in the current environment, so this phase
+is deferred. It may be reconsidered after the planned phases are complete; see
+[`docs/adr/0008-defer-podman-parity.md`](docs/adr/0008-defer-podman-parity.md).
+
+## 🔜 Next — Phase 4: Gateway + RabbitMQ
+
+Add the API gateway and event-driven payment-to-subscription activation flow. The
+Dockerized platform remains documented here: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
 
 ---
 

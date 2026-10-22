@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+COPY Streaming.Api/Streaming.Api.csproj Streaming.Api/
+COPY Streaming.Application/Streaming.Application.csproj Streaming.Application/
+COPY Streaming.Domain/Streaming.Domain.csproj Streaming.Domain/
+COPY Streaming.Infrastructure/Streaming.Infrastructure.csproj Streaming.Infrastructure/
+
+RUN dotnet restore Streaming.Api/Streaming.Api.csproj
+
+COPY . .
+RUN dotnet publish Streaming.Api/Streaming.Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:5006
+
+COPY --from=build /app/publish .
+
+EXPOSE 5006
+
+ENTRYPOINT ["dotnet", "Streaming.Api.dll"]

@@ -1,5 +1,7 @@
 using Profile.Api;
 using Profile.Api.Middleware;
+using Profile.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 // Bootstrap Serilog early so startup errors are captured in structured format (§13).
@@ -55,6 +57,13 @@ try
 
     // 6. Route to controllers.
     app.MapControllers();
+
+    if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProfileDbContext>();
+        await db.Database.MigrateAsync();
+    }
 
     app.Run();
 }

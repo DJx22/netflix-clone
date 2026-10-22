@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+COPY Catalog.Api/Catalog.Api.csproj Catalog.Api/
+COPY Catalog.Application/Catalog.Application.csproj Catalog.Application/
+COPY Catalog.Domain/Catalog.Domain.csproj Catalog.Domain/
+COPY Catalog.Infrastructure/Catalog.Infrastructure.csproj Catalog.Infrastructure/
+
+RUN dotnet restore Catalog.Api/Catalog.Api.csproj
+
+COPY . .
+RUN dotnet publish Catalog.Api/Catalog.Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:5005
+
+COPY --from=build /app/publish .
+
+EXPOSE 5005
+
+ENTRYPOINT ["dotnet", "Catalog.Api.dll"]

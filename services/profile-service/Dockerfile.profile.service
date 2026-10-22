@@ -1,0 +1,30 @@
+# Build and publish the Profile API with the .NET 10 SDK.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+# Copy project files first so restore remains cacheable when source files change.
+COPY Profile.Api/Profile.Api.csproj Profile.Api/
+COPY Profile.Application/Profile.Application.csproj Profile.Application/
+COPY Profile.Domain/Profile.Domain.csproj Profile.Domain/
+COPY Profile.Infrastructure/Profile.Infrastructure.csproj Profile.Infrastructure/
+
+RUN dotnet restore Profile.Api/Profile.Api.csproj
+
+COPY . .
+RUN dotnet publish Profile.Api/Profile.Api.csproj \
+	--configuration Release \
+	--no-restore \
+	--output /app/publish
+
+# Run the published application with the smaller ASP.NET Core runtime image.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:5002
+
+COPY --from=build /app/publish .
+
+EXPOSE 5002
+
+ENTRYPOINT ["dotnet", "Profile.Api.dll"]
