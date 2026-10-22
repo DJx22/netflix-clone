@@ -83,6 +83,10 @@ services:
       Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
       Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
       Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+      # Phase 4: RabbitMQ consumer — uses service-name DNS inside the Compose network.
+      RabbitMq__Host: ${RABBITMQ_HOST:-rabbitmq}
+      RabbitMq__UserName: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASS:-guest}
     ports:
       - "5003:5003"
     healthcheck:
@@ -94,6 +98,8 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   payment-service:
     image: ${PAYMENT_IMAGE:-payment-service:test}
@@ -103,10 +109,15 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:5004
       ConnectionStrings__PaymentDb: ${PAYMENT_DB_CONNECTION:-Server=sqlserver,1433;Database=PaymentDb;User Id=sa;Password=${SA_PASSWORD:-YourStr0ngPassw0rd!};TrustServerCertificate=True}
-      SubscriptionService__BaseUrl: ${SUBSCRIPTION_SERVICE_URL:-http://subscription-service:5003}
+      # Phase 4: SubscriptionService__BaseUrl removed — Payment no longer calls
+      # Subscription over HTTP.  The event path via RabbitMQ replaces the HTTP bridge.
       Jwt__Issuer: ${JWT_ISSUER:-netflix-clone}
       Jwt__Audience: ${JWT_AUDIENCE:-netflix-clone-api}
       Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-32-chars}
+      # Phase 4: RabbitMQ publisher — uses service-name DNS inside the Compose network.
+      RabbitMq__Host: ${RABBITMQ_HOST:-rabbitmq}
+      RabbitMq__UserName: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASS:-guest}
     ports:
       - "5004:5004"
     healthcheck:
@@ -118,8 +129,10 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
-      subscription-service:
-        condition: service_started
+      # Phase 4: depends_on subscription-service removed — Payment no longer needs
+      # Subscription to be up at startup.  The broker decouples the two services.
+      rabbitmq:
+        condition: service_healthy
 
   streaming-service:
     image: ${STREAMING_IMAGE:-streaming-service:test}
