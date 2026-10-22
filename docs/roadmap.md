@@ -51,7 +51,7 @@ A self-study build to learn microservices architecture, Docker, Podman, Kubernet
 | Document data | MongoDB, own container | Catalog only |
 | Blob storage | Azurite (emulator), own container | Avoids an Azure account/cost dependency for a phase that doesn't need one |
 | Messaging | RabbitMQ, own container, raw `RabbitMQ.Client` | MassTransit hides the exact mechanics you're trying to learn — revisit it later, once you know what it wraps |
-| Gateway | YARP | .NET-native, actively maintained by Microsoft — one less unfamiliar stack on top of everything else new |
+| Gateway | YARP (deferred) | Revisit when another client or a real routing/authentication need exists and the RAM budget allows it; see [ADR 0009](adr/0009-defer-api-gateway.md) |
 | Containers | Docker Desktop (WSL2 backend), then Podman | See §5 for the Windows-specific caveat on what Podman actually teaches you here |
 | Orchestration | Kind, single node | Runs cluster nodes as containers inside the Docker VM you already have — Minikube's default driver adds a second VM layer on top of that, for no benefit here |
 | CI/CD | Jenkins, containerized, on-demand | Started manually before a session, stopped after — not a background service |
@@ -92,7 +92,6 @@ netflix-clone/
 │   ├── subscription-service/
 │   ├── payment-service/
 │   └── streaming-service/
-├── gateway/
 ├── k8s/
 │   ├── base/
 │   └── overlays/{dev}/
@@ -105,7 +104,8 @@ netflix-clone/
     └── adr/                    # architecture decision records
 ```
 
-No `frontend/` directory — there isn't one.
+No `frontend/` or `gateway/` directory is planned for the current scope. Gateway
+work is tracked in [`docs/backlogs/api-gateway.md`](backlogs/api-gateway.md).
 
 ### Compose placement and purpose
 
@@ -146,7 +146,7 @@ ConfigMaps, Secrets, and probes rather than Docker Compose services.
 | 1 | Core services, no containers | 5–7 weeks | Register → profile → pick plan → pay → browse catalog, all via Swagger, no containers involved |
 | 2 | Dockerize | 3–4 weeks | `docker compose up` brings up all 6 services + SQL Server + MongoDB + Azurite from cold, zero manual steps |
 | 3 | Podman parity — deferred | 1 week | Revisit after the planned phases; run the stack under Podman and document concrete differences if it becomes worthwhile |
-| 4 | Gateway + RabbitMQ | 3–4 weeks | Postman only ever calls the gateway; `PaymentCompleted` → `SubscriptionActivated` happens with zero direct HTTP call between those two services |
+| 4 | RabbitMQ (gateway deferred) | 3–4 weeks | `PaymentCompleted` → `SubscriptionActivated` happens with zero direct HTTP call between those two services |
 | 5 | Kubernetes (local) | 5–7 weeks | Kill a pod, watch it self-heal; `kubectl scale` works; the full stack fits and runs inside your 8GB budget |
 | 6 | Jenkins CI/CD | 3–4 weeks | `git push` → a manually-started Jenkins container runs build → test → containerize → push → deploy with no manual steps in between |
 | 7 | Observability & resilience | 2–3 weeks | A killed dependency degrades gracefully (Polly) instead of cascading; a correlation ID is traceable end-to-end in Seq |
@@ -178,10 +178,10 @@ ConfigMaps, Secrets, and probes rather than Docker Compose services.
 - Revisit after the planned phases are complete and add Podman parity to the backlog if it is still valuable
 - Continue with Phase 4; Docker Compose remains the local container workflow
 
-**Phase 4 — Gateway & RabbitMQ**
-- YARP in front of every service; Postman never calls a service directly again
+**Phase 4 — RabbitMQ**
 - RabbitMQ container; `PaymentCompleted → SubscriptionActivated` as your first real async, event-driven hop, using `RabbitMQ.Client` directly
 - This is a genuine new conceptual domain (exchanges, queues, bindings, consumers) — don't compress it just because it's "only messaging"
+- The API gateway is deferred to a later phase; see [ADR 0009](adr/0009-defer-api-gateway.md) and the [gateway backlog](backlogs/api-gateway.md)
 
 **Phase 5 — Kubernetes, local**
 - Generate a first-draft manifest with `kompose convert`, then rewrite it by hand until you understand every line — Deployment, Service, ConfigMap, Secret, Ingress
@@ -215,7 +215,7 @@ ConfigMaps, Secrets, and probes rather than Docker Compose services.
 
 - **Streaming/Catalog metadata boundary is undecided.** Catalog owns descriptive title metadata (name, genre, search). Streaming's spec now owns its own metadata (`mediaUrl`, `contentType`, `durationSeconds`) in `StreamingDb`. Nothing decides whether `GET /media` validates `titleId` against Catalog's API or just trusts the caller — ADR 0006 explicitly scopes this out. Pin it down before you build the endpoint, not after.
 - **Playback-position retention policy** — not decided; see ADR 0006's open questions. If it's ever a real requirement, budget for a scheduled cleanup job; SQL Server won't do it for you for free.
-- **If you want real Redis exposure later, do it deliberately.** A good candidate is YARP-level response caching or rate-limiting in Phase 4 — a case where Redis solves a stated problem, not a data store bolted onto a service that didn't need one. Don't smuggle it back into Streaming without re-litigating the trade-offs ADR 0006 already weighed.
+- **If you want real Redis exposure later, do it deliberately.** Gateway-level response caching or rate-limiting could be considered if an API gateway is adopted; see the [gateway backlog](backlogs/api-gateway.md). Don't smuggle Redis back into Streaming without re-litigating the trade-offs ADR 0006 already weighed.
 - **Phase 9 / Azure budget.** Cloud stretch needs either your own Azure subscription or a decision to skip it outright. Not decided.
 - **Consistency risk.** 6–7 months, solo, part-time, is a long runway with no external accountability. Worth deciding *now* whether you want a weekly log, a public repo with visible commit history, or some other forcing function — that's a bigger risk to this plan actually finishing than any technical unknown above it.
 - **RabbitMQ scope.** "Included in core phases" is decided; exact depth isn't — a working producer/consumer pair is very different from adding dead-letter queues and retry topology. Worth pinning down when you're actually in Phase 4, not now.

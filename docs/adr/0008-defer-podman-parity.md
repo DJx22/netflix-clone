@@ -13,9 +13,10 @@ troubleshoot or optimize Podman would delay the next planned learning phase.
 
 ## Decision
 
-Defer Phase 3 and proceed directly to Phase 4 (Gateway + RabbitMQ). Keep Docker
-Compose as the local container workflow for the remaining planned phases. Do not
-spend further effort on Podman parity during this pass.
+Defer Phase 3 and proceed directly to Phase 4 (RabbitMQ; the gateway is deferred
+per [ADR 0009](0009-defer-api-gateway.md)). Keep Docker Compose as the local
+container workflow for the remaining planned phases. Do not spend further effort
+on Podman parity during this pass.
 
 After the planned phases are complete, reconsider Podman parity and add it to the
 backlog if it is still valuable.

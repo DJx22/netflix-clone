@@ -64,26 +64,61 @@ Every service has a `*.Tests` project:
 
 ---
 
-## ✅ Phase 2 — Dockerized stack, complete
+## ✅ Phase 4 — RabbitMQ event-driven activation, complete
 
-The platform is now containerized and boots from cold with Docker Compose: all six services,
-SQL Server, MongoDB, and Azurite are brought up through the repo-level compose files.
-Development, QA, and production-shaped overlays are in place, and each API publishes its
-container image from a service-local multi-stage Dockerfile.
+Payment no longer calls Subscription over HTTP. A successful payment publishes a
+`PaymentCompleted` event to RabbitMQ; the Subscription service activates the
+subscription in-process via a hosted consumer.
 
-### Compose workflow
+### What changed
+
+| Area | Change |
+|---|---|
+| **Payment → `RabbitMqEventPublisher`** | Replaced `SubscriptionActivationClient` (HTTP bridge). Publishes `PaymentCompleted` to `payment.events` exchange on success only. |
+| **Subscription → `PaymentCompletedConsumer`** | New `BackgroundService`. Declares topology on startup, acks only after DB write, nacks to DLQ on unprocessable messages. |
+| **DLQ topology** | `payment.events.dlx` (fanout) → `subscription.payment-completed.dlq`. Malformed JSON, unknown subscription IDs, and unexpected errors go here. |
+| **Correlation ID** | `X-Correlation-Id` flows from the HTTP request → AMQP header → Subscription log line. End-to-end traceable. |
+| **HTTP bridge removed** | `SubscriptionActivationClient.cs` deleted. No Polly pipeline, no `SubscriptionService__BaseUrl` env var. |
+| **Compose dependency** | `payment-service` no longer `depends_on` `subscription-service`. Both depend on `rabbitmq: condition: service_healthy`. |
+| **Streaming hardening** | `PlaybackPositionRepository.UpsertAsync` now catches SQL 2627/2601 concurrent-insert races and converts them to UPDATE (§ConcurrentUpsertRace resolved). |
+
+### Phase 4 async contract
+
+> **Activation is now asynchronous.** After `POST /api/v1/payments` returns `201`, the
+> subscription may still be in `PendingPayment` status for a brief window while the
+> `PaymentCompleted` event travels through RabbitMQ to the Subscription consumer.
+> Postman tests that check subscription status immediately after payment should include
+> a short wait (≈ 1–2 s) before the status-check request.
+
+### RabbitMQ management UI
+
+After `docker compose up`, the management UI is reachable at:
+
+```
+http://localhost:15672   (guest / guest)
+```
+
+Queues to inspect:
+- `subscription.payment-completed` — active messages, consumer count, ack rate
+- `subscription.payment-completed.dlq` — dead-letter messages (malformed / unprocessable)
+
+### Compose workflow (updated)
 
 ```powershell
-# Development stack
+# Development stack (RabbitMQ now included in root compose)
 cd <repo-root>
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 # Inspect health/status
 docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
-# Tear down everything
+# Tear down everything (including rabbitmq-data volume)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
 ```
+
+> **Note:** `rabbitmq` must reach `service_healthy` before `payment-service` and
+> `subscription-service` start. The healthcheck uses `rabbitmq-diagnostics ping`
+> (interval 10 s, 12 retries, 20 s start period).
 
 The Docker setup guide is here: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
 
@@ -217,16 +252,10 @@ curl -s -X POST http://localhost:5001/api/v1/auth/register \
 
 ---
 
-## ⏭️ Phase 3 — Podman parity deferred
+## ⏭️ Phase 5 — Kubernetes (Kind)
 
-Podman caused significant performance issues in the current environment, so this phase
-is deferred. It may be reconsidered after the planned phases are complete; see
-[`docs/adr/0008-defer-podman-parity.md`](docs/adr/0008-defer-podman-parity.md).
-
-## 🔜 Next — Phase 4: Gateway + RabbitMQ
-
-Add the API gateway and event-driven payment-to-subscription activation flow. The
-Dockerized platform remains documented here: [`docs/docker-setup/README.md`](docs/docker-setup/README.md).
+Kubernetes manifests and a local Kind cluster. Docker Compose remains the local
+development workflow; Kubernetes targets CI / staging verification.
 
 ---
 

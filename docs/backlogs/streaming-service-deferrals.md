@@ -7,7 +7,7 @@ correct decision for Phase 1–3 that will become incorrect in a later phase.
 | § | Phase trigger | Risk if missed |
 |---|---|---|
 | [§TitleIdContractAlignment](#titleidcontractalignment) | Phase 4 / any manual seeding | Catalog diagnostic always returns `NotFound`; misleading logs |
-| [§ConcurrentUpsertRace](#concurrentupsertrace) | Phase 4 | Concurrent writes → HTTP 500 |
+| [§ConcurrentUpsertRace](#concurrentupsertrace) | ~~Phase 4~~ ✅ **Resolved in Phase 4** | Concurrent writes → HTTP 500 |
 | [§EF-FindAsync-Syntax](#ef-findasync-syntax) | Any EF Core downgrade | Build break at runtime |
 | [§NoMediaIngestionEndpoint](#nomediaingestionendpoint) | Any new ingestion endpoint | Dead code gap |
 | [§CatalogBoundary](#catalogboundary) | Any fallback-source proposal | Architectural boundary violation |
@@ -103,44 +103,17 @@ await _dbContext.PlaybackPositions.FindAsync(new object[] { titleId, profileId }
 
 **Affects:** `PlaybackPositionRepository.UpsertAsync`, `PlaybackService.SavePositionAsync`
 
-**Phase trigger:** Phase 4 — when concurrent write volume makes the race practically
-reachable (e.g., player sends rapid position updates while another session is
-initialising the same `(TitleId, ProfileId)` pair).
+**✅ Resolved in Phase 4** (`PlaybackPositionRepository.UpsertAsync`).
 
-**Detail:**
-`SavePositionAsync` in `PlaybackService` follows a read-then-write pattern:
+The race was: two concurrent requests both see `null` from `FindAsync`, both attempt
+`INSERT`, the second fails with SQL Server error 2627/2601, EF wraps it in
+`DbUpdateException`, global handler maps to HTTP 500.
 
-1. `FindAsync(titleId, profileId)` — checks existence.
-2. If null → constructs a new `PlaybackPosition` → `UpsertAsync` calls `dbContext.PlaybackPositions.Add`.
-3. If two concurrent requests both reach step 1 with `null`, both attempt INSERT.
-4. The second INSERT fails with a SQL Server PK violation (error 2627).
-5. EF wraps it in `DbUpdateException`, which the global exception handler maps to **HTTP 500**.
-
-The correct Phase 1–3 outcome is acceptable because:
-- Concurrent position writes for the same `(TitleId, ProfileId)` from two different
-  processes are rare in this phase.
-- The player will retry on 5xx.
-- The retry will succeed (the row now exists, so it takes the update branch).
-
-**Before Phase 4**, harden `UpsertAsync` to catch `DbUpdateException`, inspect the
-inner `SqlException` for error numbers 2627/2601 (unique constraint violation), and
-either silently re-fetch-and-update or return a 409. Example:
-
-```csharp
-catch (DbUpdateException ex)
-    when (ex.InnerException is SqlException { Number: 2627 or 2601 })
-{
-    // Concurrent insert race — fetch the now-existing row and update it.
-    var existing = await _dbContext.PlaybackPositions
-        .FindAsync([position.TitleId, position.ProfileId], cancellationToken)
-        .ConfigureAwait(false);
-    if (existing is not null)
-    {
-        existing.UpdatePosition(position.PositionSeconds, position.UpdatedAtUtc);
-        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-}
-```
+**Fix applied:** `UpsertAsync` now catches `DbUpdateException` where
+`InnerException is SqlException { Number: 2627 or 2601 }`, detaches the conflicting
+entry, re-fetches the row the winning thread inserted, applies
+`UpdatePosition(...)`, and calls `SaveChangesAsync` again. The race is now transparent
+to the caller — no HTTP 500.
 
 ---
 
