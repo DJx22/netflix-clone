@@ -1,0 +1,124 @@
+{
+  "info": {
+    "name": "Netflix Clone API - Complete Local Suite",
+    "description": "API-level smoke and CRUD suite for all six services. Run folders in order. Set streamingTitleId to a title with a seeded MediaAsset before running Streaming.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({key: 'X-Correlation-Id', value: pm.variables.replaceIn('{{$guid}}')});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health",
+      "item": [
+        { "name": "Identity health", "request": { "method": "GET", "url": "{{identityUrl}}/health" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Identity is healthy', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Profile health", "request": { "method": "GET", "url": "{{profileUrl}}/health" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile is healthy', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Subscription health", "request": { "method": "GET", "url": "{{subscriptionUrl}}/health" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Subscription is healthy', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Payment health", "request": { "method": "GET", "url": "{{paymentUrl}}/health" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Payment is healthy', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Catalog health", "request": { "method": "GET", "url": "{{catalogUrl}}/health" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Catalog is healthy', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Streaming health", "request": { "method": "GET", "url": "{{streamingUrl}}/health" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Streaming is healthy', () => pm.response.to.have.status(200));"] } }] }
+      ]
+    },
+    {
+      "name": "02 - Identity",
+      "item": [
+        {
+          "name": "Register unique account",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.environment.set('email', `postman-${Date.now()}@example.com`);"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Account created', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.expect(body.userId).to.match(/^[0-9a-f-]{36}$/i);", "pm.environment.set('userId', body.userId);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"confirmPassword\": \"{{password}}\"\n}" }, "url": "{{identityUrl}}/api/v1/auth/register" }
+        },
+        {
+          "name": "Login and capture tokens",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Login succeeds', () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.expect(body.accessToken).to.be.a('string').and.not.empty;", "pm.expect(body.refreshToken).to.be.a('string').and.not.empty;", "pm.environment.set('accessToken', body.accessToken);", "pm.environment.set('refreshToken', body.refreshToken);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" }, "url": "{{identityUrl}}/api/v1/auth/login" }
+        },
+        { "name": "Current user", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{identityUrl}}/api/v1/auth/me" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Current user succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().userId).to.eql(pm.environment.get('userId'));"] } }] },
+        {
+          "name": "Refresh token rotation",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }, "url": "{{identityUrl}}/api/v1/auth/refresh" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Refresh succeeds', () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.environment.set('accessToken', body.accessToken);", "pm.environment.set('refreshToken', body.refreshToken);"] } }]
+        },
+        { "name": "Revoke refresh token", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }, "url": "{{identityUrl}}/api/v1/auth/revoke" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Refresh token revoked', () => pm.response.to.have.status(204));"] } }] }
+      ]
+    },
+    {
+      "name": "03 - Profile",
+      "item": [
+        { "name": "List profiles", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{profileUrl}}/api/v1/profiles" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profiles list succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json()).to.be.an('array');"] } }] },
+        {
+          "name": "Create profile",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"Postman Profile\",\n  \"avatarId\": \"avatar-1\",\n  \"isKidsProfile\": false\n}" }, "url": "{{profileUrl}}/api/v1/profiles" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile created', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.expect(body.profileId).to.match(/^[0-9a-f-]{36}$/i);", "pm.environment.set('profileId', body.profileId);"] } }]
+        },
+        { "name": "Get profile", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{profileUrl}}/api/v1/profiles/{{profileId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile fetch succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().profileId).to.eql(pm.environment.get('profileId'));"] } }] },
+        { "name": "Update profile", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"Updated Postman Profile\",\n  \"preferredLanguage\": \"en\",\n  \"maturityRating\": \"PG-13\"\n}" }, "url": "{{profileUrl}}/api/v1/profiles/{{profileId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile update succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().displayName).to.eql('Updated Postman Profile');"] } }] },
+        { "name": "Profile remains for Streaming", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{profileUrl}}/api/v1/profiles/{{profileId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile remains available for Streaming', () => pm.response.to.have.status(200));"] } }] }
+      ]
+    },
+    {
+      "name": "04 - Subscription",
+      "item": [
+        { "name": "List plans", "request": { "method": "GET", "url": "{{subscriptionUrl}}/api/v1/plans" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Plans list succeeds', () => pm.response.to.have.status(200));", "const plans = pm.response.json();", "pm.expect(plans).to.be.an('array').and.not.empty;", "pm.environment.set('planId', plans[0].planId);"] } }] },
+        {
+          "name": "Create pending subscription",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"planId\": \"{{planId}}\"\n}" }, "url": "{{subscriptionUrl}}/api/v1/subscriptions" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Subscription created', () => pm.response.to.have.status(202));", "const body = pm.response.json();", "pm.expect(body.subscriptionId).to.match(/^[0-9a-f-]{36}$/i);", "pm.environment.set('subscriptionId', body.subscriptionId);"] } }]
+        },
+        { "name": "Get current subscription", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{subscriptionUrl}}/api/v1/subscriptions/me" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Subscription fetch succeeds', () => pm.response.to.have.status(200));", "pm.expect(['PendingPayment', 'Active']).to.include(pm.response.json().status);"] } }] },
+        { "name": "Subscription remains pending until Payment", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{subscriptionUrl}}/api/v1/subscriptions/me" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Subscription remains available for payment', () => pm.response.to.have.status(200));"] } }] }
+      ]
+    },
+    {
+      "name": "05 - Payment",
+      "item": [
+        {
+          "name": "Create deterministic successful payment",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"amount\": 9.99,\n  \"currency\": \"USD\",\n  \"simulateFailure\": false\n}" }, "url": "{{paymentUrl}}/api/v1/payments" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Payment attempt created', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.expect(body.status).to.eql('Succeeded');", "pm.environment.set('paymentId', body.paymentId);"] } }]
+        },
+        { "name": "List payment history", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{paymentUrl}}/api/v1/payments" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Payment history succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json()).to.be.an('array');"] } }] },
+        { "name": "Get payment", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{paymentUrl}}/api/v1/payments/{{paymentId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Payment fetch succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().paymentId).to.eql(pm.environment.get('paymentId'));"] } }] },
+        { "name": "Create deterministic failed payment", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"amount\": 9.99,\n  \"currency\": \"USD\",\n  \"simulateFailure\": true\n}" }, "url": "{{paymentUrl}}/api/v1/payments" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Failed payment path is deterministic', () => pm.response.to.have.status(201));", "pm.expect(pm.response.json().status).to.eql('Failed');"] } }] },
+        { "name": "Change plan", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"newPlanId\": \"{{planId}}\"\n}" }, "url": "{{subscriptionUrl}}/api/v1/subscriptions/me/plan" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Plan change succeeds', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Cancel subscription", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{subscriptionUrl}}/api/v1/subscriptions/me" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Subscription cancelled', () => pm.response.to.have.status(204));"] } }] }
+      ]
+    },
+    {
+      "name": "06 - Catalog",
+      "item": [
+        { "name": "List titles", "request": { "method": "GET", "url": "{{catalogUrl}}/api/v1/titles?page=1&pageSize=20" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Title search succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().items).to.be.an('array');"] } }] },
+        { "name": "List genres", "request": { "method": "GET", "url": "{{catalogUrl}}/api/v1/genres" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Genre list succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json()).to.be.an('array');"] } }] },
+        {
+          "name": "Create title",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test Film\",\n  \"description\": \"Created by the complete API suite\",\n  \"genres\": [\"Drama\", \"Test\"],\n  \"releaseYear\": 2026,\n  \"maturityRating\": \"PG-13\",\n  \"cast\": [\"Test Actor\"],\n  \"durationMinutes\": 120,\n  \"streamingAssetId\": \"postman-test-film.mp4\"\n}" }, "url": "{{catalogUrl}}/api/v1/titles" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Title created', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.expect(body.titleId).to.be.a('string').and.not.empty;", "pm.environment.set('titleId', body.titleId);"] } }]
+        },
+        { "name": "Get title", "request": { "method": "GET", "url": "{{catalogUrl}}/api/v1/titles/{{titleId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Title fetch succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().titleId).to.eql(pm.environment.get('titleId'));"] } }] },
+        { "name": "Update title", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Postman Test Film\",\n  \"genres\": [\"Drama\"],\n  \"releaseYear\": 2026,\n  \"maturityRating\": \"PG\",\n  \"durationMinutes\": 121\n}" }, "url": "{{catalogUrl}}/api/v1/titles/{{titleId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Title update succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().name).to.eql('Updated Postman Test Film');"] } }] },
+        { "name": "Delete title", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{catalogUrl}}/api/v1/titles/{{titleId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Title deleted', () => pm.response.to.have.status(204));"] } }] }
+      ]
+    },
+    {
+      "name": "07 - Streaming",
+      "item": [
+        { "name": "Get seeded media asset", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/media" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Seeded media lookup succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().titleId).to.eql(pm.environment.get('streamingTitleId'));"] } }] },
+        { "name": "Save playback position", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"positionSeconds\": 42\n}" }, "url": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/position" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Playback position saved', () => pm.response.to.have.status(204));"] } }] },
+        { "name": "Get playback position", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/position?profileId={{profileId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Playback position fetch succeeds', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().positionSeconds).to.eql(42);"] } }] }
+      ]
+    },
+    {
+      "name": "08 - Cleanup",
+      "item": [
+        { "name": "Delete profile", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{profileUrl}}/api/v1/profiles/{{profileId}}" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile deleted', () => pm.response.to.have.status(204));"] } }] }
+      ]
+    }
+  ]
+}
