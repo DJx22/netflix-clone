@@ -6,11 +6,11 @@
 
   <ItemGroup>
     <!-- MediatR — chosen over a custom mediator for pipeline behaviour support (logging, validation) -->
-    <PackageReference Include="MediatR"                                   Version="12.*" />
+    <PackageReference Include="MediatR" Version="12.*" />
     <!-- FluentValidation — validates every command before it reaches a handler (§12) -->
-    <PackageReference Include="FluentValidation"                          Version="11.10.0" />
+    <PackageReference Include="FluentValidation" Version="12.2.0" />
     <!-- Logging abstractions — ILogger<T> for LoggingBehaviour; no full hosting stack needed in Application -->
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
   </ItemGroup>
 
   <PropertyGroup>

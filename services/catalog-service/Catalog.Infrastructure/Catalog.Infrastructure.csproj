@@ -7,14 +7,14 @@
 
   <ItemGroup>
     <!-- MongoDB driver — the only project in the solution permitted to reference this (ADR 0005, §2) -->
-    <PackageReference Include="MongoDB.Driver"                            Version="3.*" />
+    <PackageReference Include="MongoDB.Driver" Version="3.13.0" />
     <!-- DI / Options / Logging infrastructure — kept in Abstractions packages to avoid pulling in ASP.NET hosting -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"  Version="9.*" />
-    <PackageReference Include="Microsoft.Extensions.Options"                           Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.13" />
     <!-- ConfigurationExtensions required for services.Configure<T>(IConfigurationSection) overload -->
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"   Version="9.*" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions"        Version="9.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"              Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -9,18 +9,18 @@
 
   <ItemGroup>
     <!-- FluentValidation — auto-validates [FromBody] DTOs before actions run (§12) -->
-    <PackageReference Include="FluentValidation.AspNetCore"                         Version="11.*" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
     <!-- JWT Bearer — validates issuer, audience, expiry on every authenticated request (§12) -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer"       Version="10.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
     <!-- OpenAPI / Swagger -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi"                        Version="10.0.11" />
-    <PackageReference Include="Swashbuckle.AspNetCore"                              Version="10.*" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
     <!-- MongoDB readiness check — pings the database, not just process liveness (§11) -->
-    <PackageReference Include="AspNetCore.HealthChecks.MongoDb"                     Version="9.*" />
+    <PackageReference Include="AspNetCore.HealthChecks.MongoDb" Version="9.0.0" />
     <!-- Structured logging — replaces the default Microsoft logger (§13) -->
-    <PackageReference Include="Serilog.AspNetCore"                                  Version="9.*" />
-    <PackageReference Include="Serilog.Enrichers.Environment"                       Version="3.*" />
-    <PackageReference Include="Serilog.Sinks.Console"                               Version="6.*" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
   </ItemGroup>
 
   <ItemGroup>
