@@ -64,6 +64,54 @@ Every service has a `*.Tests` project:
 
 ---
 
+## ✅ Phase 2 — Dockerize, complete
+
+All six services are containerized. The full platform (services + SQL Server + MongoDB +
+Azurite + RabbitMQ) starts from cold with a single command and all containers reach
+healthy status with no manual steps.
+
+### What was built
+
+| Artifact | Details |
+|---|---|
+| **Dockerfiles** | One multi-stage Dockerfile per service (`Dockerfile.<service>.service`). SDK image compiles and publishes; runtime image (`mcr.microsoft.com/dotnet/aspnet:10.0`) carries only the published output. |
+| **`docker-compose.yml`** | Root compose file: all 6 service containers + SQL Server + MongoDB + Azurite + RabbitMQ on a shared `netflix-clone-net` bridge network. |
+| **`docker-compose.dev.yml`** | Dev override: host-port mappings (5001–5006, 1433, 27017, 10000–10002, 5672/15672), named volumes for SQL/Mongo/Azurite data, EF migration init containers. |
+| **Healthchecks** | Every service container has a `HEALTHCHECK` using `curl /health`. Infrastructure containers (SQL Server, MongoDB, RabbitMQ) have healthchecks; service containers `depends_on: condition: service_healthy`. |
+| **`StreamingDb.MediaAssets` admin API** | `POST /api/v1/admin/media-assets` added — no longer requires a raw SQL INSERT to seed media assets. Upsert semantics: re-registering an existing `titleId` updates the record. |
+| **Environment wiring** | `CatalogClient:BaseUrl` (→ `CatalogClient__BaseUrl`) injected via compose env for the Streaming → Catalog diagnostic fallback call. |
+
+### Compose quick-start
+
+```powershell
+cd <repo-root>
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+# Check all containers are healthy
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+
+# Tear down (preserves volumes by default)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+
+# Full teardown including volumes
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
+```
+
+### Individual service image builds
+
+Each image can also be built and smoke-tested independently:
+
+```powershell
+cd services/identity-service
+docker build -f Dockerfile.identity.service -t identity-service:local .
+docker run --rm -p 5001:5001 identity-service:local
+```
+
+> See [`docs/docker-setup/README.md`](docs/docker-setup/README.md) for the full Docker
+> setup guide, including the WSL2 memory cap recommendation.
+
+---
+
 ## ✅ Phase 4 — RabbitMQ event-driven activation, complete
 
 Payment no longer calls Subscription over HTTP. A successful payment publishes a
@@ -194,20 +242,25 @@ echo "Catalog titleId: $TITLE_ID"   # e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6
 > **Keep the `titleId` Catalog returns.** It is a GUID generated internally and is
 > the shared key between Catalog and Streaming. Do not invent your own slug.
 
-### 2. Streaming — `MediaAssets` table (SQL Server `StreamingDb`)
+### 2. Streaming — `MediaAssets` (Phase 2+: admin API endpoint)
 
-There is no API endpoint to create media assets in Phase 1. Seed directly using the
-**GUID from step 1** and the Azurite blob URL:
+**Phase 2 and later** — use the admin API endpoint (no direct SQL insert needed):
 
 ```bash
-# First upload the file to Azurite
-az storage blob upload \
-  --container-name media --name inception.mp4 \
-  --file "C:\path\to\inception.mp4" \
-  --connection-string "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;\
-AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;\
-BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+curl -s -X POST http://localhost:5006/api/v1/admin/media-assets \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "titleId": "'"$TITLE_ID"'",
+    "mediaUrl": "http://127.0.0.1:10000/devstoreaccount1/media/inception.mp4",
+    "contentType": "video/mp4",
+    "durationSeconds": 8880
+  }'
 ```
+
+The endpoint is idempotent (upsert) — re-posting with the same `titleId` updates the record.
+
+**Phase 1 only** — seed directly with a SQL INSERT:
 
 ```sql
 -- Run against StreamingDb (sqlcmd or SSMS)
@@ -216,7 +269,7 @@ VALUES (
   '3fa85f64-5717-4562-b3fc-2c963f66afa6',   -- GUID from Catalog POST response
   'http://127.0.0.1:10000/devstoreaccount1/media/inception.mp4',
   'video/mp4',
-  8880   -- 148 min × 60
+  8880
 );
 ```
 
@@ -252,10 +305,21 @@ curl -s -X POST http://localhost:5001/api/v1/auth/register \
 
 ---
 
-## ⏭️ Phase 5 — Kubernetes (Kind)
+## ⏭️ Phase 5 — Kubernetes (Kind) — next up
 
 Kubernetes manifests and a local Kind cluster. Docker Compose remains the local
 development workflow; Kubernetes targets CI / staging verification.
+
+Goal: kill a pod, watch it self-heal; `kubectl scale` works; the full stack fits inside
+the 8GB budget. See [`docs/roadmap.md §8`](docs/roadmap.md) for phase detail.
+
+---
+
+## ⏭️ Phase 6 — Jenkins CI/CD — planned
+
+Jenkins in a container (started manually per session). Pipeline: restore → build → test →
+`docker build` → push to Docker Hub → `kubectl apply`. The `scripts/ci-test.sh` script
+lays the groundwork for steps 1–3 of this pipeline.
 
 ---
 
@@ -269,7 +333,12 @@ development workflow; Kubernetes targets CI / staging verification.
 | `services/*/*.Infrastructure/` | EF Core / MongoDB, repository implementations, external HTTP clients |
 | `services/*/*.Api/` | Controllers, middleware, DI wiring, `Program.cs` |
 | `services/*/*.Tests/` | Unit, validator, and integration tests |
+| `services/*/Dockerfile.<name>.service` | Multi-stage Dockerfile per service |
+| `docker-compose.yml` | Root compose: all services + SQL Server + MongoDB + Azurite + RabbitMQ |
+| `docker-compose.dev.yml` | Dev override: host ports, named volumes, EF migration init containers |
+| `postman/` | Postman collection + environment file for the full API suite |
 | `docs/adr/` | Architecture decision records |
 | `docs/roadmap.md` | Phased plan, tool order, scope guardrails |
 | `docs/backlogs/` | Phase-deferred decisions with explicit trigger criteria |
-| `gateway/`, `k8s/`, `jenkins/` | Empty — reserved for Phases 4, 5, 6 |
+| `k8s/` | Reserved for Phase 5 — Kubernetes manifests |
+| `jenkins/` | Reserved for Phase 6 — Jenkinsfile |
