@@ -48,7 +48,7 @@ public sealed class PlaybackController : ControllerBase
     /// <response code="200">Media asset found.</response>
     /// <response code="401">Access token missing, expired, or invalid.</response>
     /// <response code="404">No media asset registered for this title.</response>
-    [HttpGet(Routes.Media)]
+    [HttpGet(Routes.Media, Name = Routes.GetMediaRouteName)]
     [ProducesResponseType(typeof(MediaResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

@@ -2,9 +2,8 @@ namespace Streaming.Api;
 
 /// <summary>
 /// Named route constants for the Streaming service.
-/// Constants instead of inline string literals (§16) keep
-/// <see cref="Controllers.PlaybackController"/> and
-/// <see cref="Controllers.HealthController"/> in sync with openapi.yaml.
+/// Constants instead of inline string literals (§16) keep all controllers
+/// in sync with openapi.yaml.
 /// </summary>
 internal static class Routes
 {
@@ -21,4 +20,15 @@ internal static class Routes
     /// Readiness probe — at the service root, not under api/v1 (openapi.yaml).
     /// </summary>
     internal const string Health = "/health";
+
+    // ── Admin routes ──────────────────────────────────────────────────────────
+
+    /// <summary>Base route for admin media-asset management endpoints.</summary>
+    internal const string MediaAssetsBase = "api/v1/admin/media-assets";
+
+    /// <summary>
+    /// Route name used for <c>CreatedAtRoute</c> Location header on
+    /// <c>POST /api/v1/admin/media-assets</c>; points to the playback GET media endpoint.
+    /// </summary>
+    internal const string GetMediaRouteName = "GetMedia";
 }

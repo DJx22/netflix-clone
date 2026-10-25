@@ -6,11 +6,6 @@ namespace Streaming.Domain.Interfaces;
 /// Persistence contract for <see cref="MediaAsset"/>.
 /// Implemented in <c>Streaming.Infrastructure</c>; consumed by <c>Streaming.Application</c>.
 /// </summary>
-/// <remarks>
-/// Read-only surface: no create or update method is exposed because no write endpoint
-/// for <see cref="MediaAsset"/> exists in the current API contract. Do not add one here
-/// until a corresponding endpoint is defined in the OpenAPI spec.
-/// </remarks>
 public interface IMediaAssetRepository
 {
     /// <summary>
@@ -24,4 +19,24 @@ public interface IMediaAssetRepository
     /// <param name="titleId">The title identifier to look up.</param>
     /// <param name="cancellationToken">Propagated to the underlying data access call.</param>
     Task<MediaAsset?> FindByTitleIdAsync(string titleId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a new <see cref="MediaAsset"/> record.
+    /// Caller must ensure no asset already exists for <see cref="MediaAsset.TitleId"/>
+    /// (use <see cref="FindByTitleIdAsync"/> first).
+    /// </summary>
+    Task AddAsync(MediaAsset asset, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists mutations made to an existing tracked <see cref="MediaAsset"/>
+    /// (e.g. after calling <see cref="MediaAsset.Update"/>).
+    /// </summary>
+    Task UpdateAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes the <see cref="MediaAsset"/> for the given <paramref name="titleId"/>.
+    /// No-op (does not throw) when no asset is registered for that title.
+    /// </summary>
+    Task DeleteAsync(string titleId, CancellationToken cancellationToken = default);
 }
+

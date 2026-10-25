@@ -9,11 +9,6 @@ namespace Streaming.Infrastructure.Persistence.Repositories;
 /// </summary>
 /// <remarks>
 /// Lifetime: <b>Scoped</b> — holds a scoped <see cref="StreamingDbContext"/> (§7).
-/// <para>
-/// Read-only: no write methods are exposed because no media-ingestion endpoint exists
-/// in the current API contract. Do not add write methods until a corresponding endpoint
-/// is defined in the OpenAPI spec.
-/// </para>
 /// </remarks>
 public sealed class MediaAssetRepository : IMediaAssetRepository
 {
@@ -42,4 +37,43 @@ public sealed class MediaAssetRepository : IMediaAssetRepository
             .FindAsync([titleId], cancellationToken)
             .ConfigureAwait(false);
     }
+
+    /// <inheritdoc/>
+    public async Task AddAsync(MediaAsset asset, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.MediaAssets
+            .AddAsync(asset, cancellationToken)
+            .ConfigureAwait(false);
+
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The caller must first obtain the entity via <see cref="FindByTitleIdAsync"/>
+    /// (which returns a change-tracked instance), mutate it via
+    /// <see cref="MediaAsset.Update"/>, then call this method.
+    /// EF Core detects the mutation automatically — no explicit DbSet.Update call needed.
+    /// </remarks>
+    public async Task UpdateAsync(CancellationToken cancellationToken = default)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteAsync(string titleId, CancellationToken cancellationToken = default)
+    {
+        var asset = await _dbContext.MediaAssets
+            .FindAsync([titleId], cancellationToken)
+            .ConfigureAwait(false);
+
+        if (asset is null)
+        {
+            return; // no-op — asset was never registered or already deleted
+        }
+
+        _dbContext.MediaAssets.Remove(asset);
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
 }
+

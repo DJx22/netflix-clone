@@ -25,7 +25,7 @@ info:
         "title does not exist in Catalog."
       - Playback positions are retained indefinitely. No TTL or scheduled
         cleanup job is implemented.
-  version: "1.1"
+  version: "1.2"
 
 servers:
   - url: /playback
@@ -35,6 +35,8 @@ servers:
 
 tags:
   - name: Playback
+  - name: Admin
+    description: Media-asset registration endpoints. Requires a valid bearer token.
   - name: Health
 
 paths:
@@ -151,6 +153,89 @@ paths:
           $ref: '#/components/responses/ValidationError'
 
 
+  /api/v1/admin/media-assets:
+    post:
+      tags:
+        - Admin
+
+      summary: Register or update a media asset
+      description: >
+        Upsert semantics — creates a new MediaAsset when none exists for
+        titleId, or updates the existing one. Safe to call repeatedly;
+        a second call with the same titleId replaces the stored values.
+        Role gating (admin-only) is deferred to the role-based-access-control
+        future scope (docs/future-scopes/role-based-access-control.md).
+        Any valid bearer token is accepted in the current implementation.
+
+      operationId: upsertMediaAsset
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMediaAssetRequest'
+
+      responses:
+
+        '201':
+          description: >
+            Media asset created or updated. Location header points to
+            GET /api/v1/playback/{titleId}/media for this asset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaResponse'
+
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+        '401':
+          description: Bearer token missing, expired, or invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+
+  /api/v1/admin/media-assets/{titleId}:
+    delete:
+      tags:
+        - Admin
+
+      summary: Deregister a media asset
+      description: >
+        Removes the media asset registered for the given titleId.
+        No-op when no asset is registered — always returns 204.
+
+      operationId: deleteMediaAsset
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/TitleId'
+
+      responses:
+
+        '204':
+          description: Asset deleted (or was never registered).
+
+        '401':
+          description: Bearer token missing, expired, or invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+
   /health:
     get:
       tags:
@@ -210,6 +295,39 @@ components:
 
 
   schemas:
+
+    UpsertMediaAssetRequest:
+      type: object
+
+      required:
+        - titleId
+        - mediaUrl
+        - contentType
+        - durationSeconds
+
+      properties:
+
+        titleId:
+          type: string
+          description: >
+            Identifier shared with Catalog's title. This service does not
+            validate the id against Catalog (ADR 0006 §3).
+
+        mediaUrl:
+          type: string
+          format: uri
+          description: >
+            Complete URI of the pre-encoded media object stored in Azurite
+            during local development.
+
+        contentType:
+          type: string
+          example: video/mp4
+
+        durationSeconds:
+          type: integer
+          minimum: 0
+
 
     MediaResponse:
       type: object

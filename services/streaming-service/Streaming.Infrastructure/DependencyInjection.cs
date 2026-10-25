@@ -52,8 +52,9 @@ public static class DependencyInjection
         services.AddScoped<IMediaAssetRepository, MediaAssetRepository>();
         services.AddScoped<IPlaybackPositionRepository, PlaybackPositionRepository>();
 
-        // --- Application service ---
+        // --- Application services ---
         services.AddScoped<IPlaybackService, PlaybackService>();
+        services.AddScoped<IMediaAssetAdminService, MediaAssetAdminService>();
 
         // --- Clock provider (Singleton — stateless) ---
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();

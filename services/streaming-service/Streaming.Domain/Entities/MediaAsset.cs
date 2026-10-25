@@ -85,4 +85,38 @@ public sealed class MediaAsset
         ContentType     = contentType;
         DurationSeconds = durationSeconds;
     }
+
+    /// <summary>
+    /// Replaces the media metadata with new values.
+    /// Called when an admin re-registers a media asset for an existing title.
+    /// Validates the same invariants enforced by the constructor.
+    /// </summary>
+    /// <param name="mediaUrl">New complete URI of the stored media object; must not be null or whitespace.</param>
+    /// <param name="contentType">New MIME type; must not be null or whitespace.</param>
+    /// <param name="durationSeconds">New total duration in seconds; must be zero or positive.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when any string argument is null or whitespace, or when
+    /// <paramref name="durationSeconds"/> is negative.
+    /// </exception>
+    public void Update(string mediaUrl, string contentType, int durationSeconds)
+    {
+        if (string.IsNullOrWhiteSpace(mediaUrl))
+        {
+            throw new ArgumentException("Media URL must not be null or whitespace.", nameof(mediaUrl));
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            throw new ArgumentException("Content type must not be null or whitespace.", nameof(contentType));
+        }
+
+        if (durationSeconds < 0)
+        {
+            throw new ArgumentException("Duration must be zero or positive.", nameof(durationSeconds));
+        }
+
+        MediaUrl        = mediaUrl;
+        ContentType     = contentType;
+        DurationSeconds = durationSeconds;
+    }
 }
