@@ -1,0 +1,1783 @@
+{
+  "info": {
+    "_postman_id": "c3621b47-ab56-4c7a-8c50-cf016ceac6c3",
+    "name": "Netflix Clone API - Complete Local Suite v1",
+    "description": "API-level smoke and CRUD suite for all six services. Folders run in order: Health -> Identity -> Profile -> Subscription -> Payment -> Catalog -> Streaming Seed -> Streaming -> Cleanup. All teardown is consolidated in 08 - Cleanup.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "54391467"
+  },
+  "item": [
+    {
+      "name": "00 - Health",
+      "item": [
+        {
+          "name": "Identity health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Identity is healthy\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{identityUrl}}/health",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Profile health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Profile is healthy\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{profileUrl}}/health",
+              "host": [
+                "{{profileUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscription health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Subscription is healthy\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{subscriptionUrl}}/health",
+              "host": [
+                "{{subscriptionUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Payment health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Payment is healthy\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{paymentUrl}}/health",
+              "host": [
+                "{{paymentUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Catalog health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Catalog is healthy\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/health",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Streaming health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Streaming is healthy\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{streamingUrl}}/health",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Verify every service is reachable before running functional tests."
+    },
+    {
+      "name": "01 - Identity",
+      "item": [
+        {
+          "name": "Register unique account",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"email\", \"postman-\" + Date.now() + \"@example.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Account created (201)\", () => pm.response.to.have.status(201));\nconst body = pm.response.json();\npm.expect(body.userId).to.match(/^[0-9a-f-]{36}$/i);\npm.environment.set(\"userId\", body.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"confirmPassword\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{identityUrl}}/api/v1/auth/register",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login and capture tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Login succeeds (200)\", () => pm.response.to.have.status(200));\nconst body = pm.response.json();\npm.expect(body.accessToken).to.be.a(\"string\").and.not.empty;\npm.expect(body.refreshToken).to.be.a(\"string\").and.not.empty;\npm.environment.set(\"accessToken\", body.accessToken);\npm.environment.set(\"refreshToken\", body.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{identityUrl}}/api/v1/auth/login",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Current user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Current user succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().userId).to.eql(pm.environment.get(\"userId\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{identityUrl}}/api/v1/auth/me",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh token rotation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Refresh succeeds (200)\", () => pm.response.to.have.status(200));\nconst body = pm.response.json();\npm.expect(body.accessToken).to.be.a(\"string\").and.not.empty;\npm.expect(body.refreshToken).to.be.a(\"string\").and.not.empty;\npm.environment.set(\"accessToken\", body.accessToken);\npm.environment.set(\"refreshToken\", body.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{identityUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Register, login, verify current user, rotate refresh token. Token revocation deferred to 08 - Cleanup."
+    },
+    {
+      "name": "02 - Profile",
+      "item": [
+        {
+          "name": "List profiles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Profiles list succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{profileUrl}}/api/v1/profiles",
+              "host": [
+                "{{profileUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Profile created (201)\", () => pm.response.to.have.status(201));\nconst body = pm.response.json();\npm.expect(body.profileId).to.match(/^[0-9a-f-]{36}$/i);\npm.environment.set(\"profileId\", body.profileId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Postman Profile\",\n  \"avatarId\": \"avatar-1\",\n  \"isKidsProfile\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{profileUrl}}/api/v1/profiles",
+              "host": [
+                "{{profileUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Profile fetch succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().profileId).to.eql(pm.environment.get(\"profileId\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{profileUrl}}/api/v1/profiles/{{profileId}}",
+              "host": [
+                "{{profileUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                "{{profileId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Profile update succeeds (200)\", () => pm.response.to.have.status(200));\npm.expect(pm.response.json().displayName).to.eql(\"Updated Postman Profile\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Updated Postman Profile\",\n  \"preferredLanguage\": \"en\",\n  \"maturityRating\": \"PG-13\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{profileUrl}}/api/v1/profiles/{{profileId}}",
+              "host": [
+                "{{profileUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                "{{profileId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "CRUD on user profiles. Delete deferred to 08 - Cleanup so profileId stays available for Streaming."
+    },
+    {
+      "name": "03 - Subscription",
+      "item": [
+        {
+          "name": "List plans",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Plans list succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "const plans = pm.response.json();",
+                  "pm.expect(plans).to.be.an(\"array\").and.not.empty;",
+                  "pm.environment.set(\"planId\", plans[0].planId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{subscriptionUrl}}/api/v1/plans",
+              "host": [
+                "{{subscriptionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "plans"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create pending subscription",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Subscription created (202)\", () => pm.response.to.have.status(202));\nconst body = pm.response.json();\npm.expect(body.subscriptionId).to.match(/^[0-9a-f-]{36}$/i);\npm.environment.set(\"subscriptionId\", body.subscriptionId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"{{planId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{subscriptionUrl}}/api/v1/subscriptions",
+              "host": [
+                "{{subscriptionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get current subscription",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Subscription fetch succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(['PendingPayment', 'Active']).to.include(pm.response.json().status);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{subscriptionUrl}}/api/v1/subscriptions/me",
+              "host": [
+                "{{subscriptionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "List plans, create pending subscription, verify status. Cancellation deferred to 08 - Cleanup."
+    },
+    {
+      "name": "04 - Payment",
+      "item": [
+        {
+          "name": "Create deterministic successful payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Payment attempt created (201)\", () => pm.response.to.have.status(201));\nconst body = pm.response.json();\npm.expect(body.status).to.eql(\"Succeeded\");\npm.environment.set(\"paymentId\", body.paymentId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"amount\": 9.99,\n  \"currency\": \"USD\",\n  \"simulateFailure\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{paymentUrl}}/api/v1/payments",
+              "host": [
+                "{{paymentUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List payment history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Payment history succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentUrl}}/api/v1/payments",
+              "host": [
+                "{{paymentUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Payment fetch succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().paymentId).to.eql(pm.environment.get(\"paymentId\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentUrl}}/api/v1/payments/{{paymentId}}",
+              "host": [
+                "{{paymentUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create deterministic failed payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Failed payment path is deterministic (201)\", () => pm.response.to.have.status(201));\npm.expect(pm.response.json().status).to.eql(\"Failed\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"amount\": 9.99,\n  \"currency\": \"USD\",\n  \"simulateFailure\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{paymentUrl}}/api/v1/payments",
+              "host": [
+                "{{paymentUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Plan change succeeds (200)\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPlanId\": \"{{planId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{subscriptionUrl}}/api/v1/subscriptions/me/plan",
+              "host": [
+                "{{subscriptionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions",
+                "me",
+                "plan"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Successful charge, history, single-payment lookup, deterministic failure, plan change. Cancellation deferred to 08 - Cleanup."
+    },
+    {
+      "name": "05 - Catalog",
+      "item": [
+        {
+          "name": "List titles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Title list succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().items).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/titles?page=1&pageSize=20",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "titles"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List genres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Genre list succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/genres",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "genres"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Title created (201)\", () => pm.response.to.have.status(201));\nconst body = pm.response.json();\npm.expect(body.titleId).to.be.a(\"string\").and.not.empty;\npm.environment.set(\"titleId\", body.titleId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Film\",\n  \"description\": \"Created by the complete API suite\",\n  \"genres\": [\"Drama\", \"Test\"],\n  \"releaseYear\": 2026,\n  \"maturityRating\": \"PG-13\",\n  \"cast\": [\"Test Actor\"],\n  \"durationMinutes\": 120,\n  \"streamingAssetId\": \"postman-test-film.mp4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/titles",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "titles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Title fetch succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().titleId).to.eql(pm.environment.get(\"titleId\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/titles/{{titleId}}",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "titles",
+                "{{titleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Title update succeeds (200)\", () => pm.response.to.have.status(200));\npm.expect(pm.response.json().name).to.eql(\"Updated Postman Test Film\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Postman Test Film\",\n  \"genres\": [\"Drama\"],\n  \"releaseYear\": 2026,\n  \"maturityRating\": \"PG\",\n  \"durationMinutes\": 121\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/titles/{{titleId}}",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "titles",
+                "{{titleId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "CRUD on catalog titles. titleId is reused by Streaming Seed. Delete deferred to 08 - Cleanup."
+    },
+    {
+      "name": "06 - Streaming Seed",
+      "item": [
+        {
+          "name": "Register media asset (POST /api/v1/admin/media-assets)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Media asset registered (201)\", () => pm.response.to.have.status(201));\nconst body = pm.response.json();\npm.expect(body.titleId).to.be.a(\"string\").and.not.empty;\npm.expect(body.mediaUrl).to.be.a(\"string\").and.not.empty;\npm.expect(body.contentType).to.be.a(\"string\").and.not.empty;\npm.expect(body.durationSeconds).to.be.a(\"number\").and.gte(0);\n// Wire titleId from Catalog -> streamingTitleId so Streaming tests run without manual seeding.\npm.environment.set(\"streamingTitleId\", body.titleId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titleId\": \"{{titleId}}\",\n  \"mediaUrl\": \"http://127.0.0.1:10000/devstoreaccount1/media/{{titleId}}.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"durationSeconds\": 5400\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/admin/media-assets",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "media-assets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Re-register media asset - upsert semantics (POST /api/v1/admin/media-assets)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Upsert returns 201 for existing asset\", () => pm.response.to.have.status(201));\nconst body = pm.response.json();\npm.expect(body.titleId).to.eql(pm.environment.get(\"streamingTitleId\"));\npm.expect(body.durationSeconds).to.eql(5401);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titleId\": \"{{titleId}}\",\n  \"mediaUrl\": \"http://127.0.0.1:10000/devstoreaccount1/media/{{titleId}}.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"durationSeconds\": 5401\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/admin/media-assets",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "media-assets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register media asset - validation error (POST -> 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Invalid body returns 400\", () => pm.response.to.have.status(400));\npm.expect(pm.response.json().errors).to.be.an(\"object\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titleId\": \"\",\n  \"mediaUrl\": \"not-a-uri\",\n  \"contentType\": \"\",\n  \"durationSeconds\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/admin/media-assets",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "media-assets"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Register a media asset via POST /api/v1/admin/media-assets using titleId from Catalog. Tests upsert semantics and 400 validation. Deregistration deferred to 08 - Cleanup."
+    },
+    {
+      "name": "07 - Streaming",
+      "item": [
+        {
+          "name": "Get media asset (GET /api/v1/playback/:titleId/media)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Media lookup succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.titleId).to.eql(pm.environment.get(\"streamingTitleId\"));",
+                  "pm.expect(body.mediaUrl).to.be.a(\"string\").and.not.empty;",
+                  "pm.expect(body.contentType).to.be.a(\"string\").and.not.empty;",
+                  "pm.expect(body.durationSeconds).to.be.a(\"number\").and.gte(0);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/media",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "playback",
+                "{{streamingTitleId}}",
+                "media"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get media asset - not found (GET /api/v1/playback/:titleId/media -> 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Unknown titleId returns 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.status).to.eql(404);",
+                  "pm.expect(body.title).to.be.a(\"string\").and.not.empty;"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/playback/00000000-0000-0000-0000-000000000000/media",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "playback",
+                "00000000-0000-0000-0000-000000000000",
+                "media"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save playback position (PUT /api/v1/playback/:titleId/position)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Playback position saved (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"positionSeconds\": 42\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/position",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "playback",
+                "{{streamingTitleId}}",
+                "position"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save playback position - validation error (PUT -> 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Invalid position body returns 400\", () => pm.response.to.have.status(400));\npm.expect(pm.response.json().errors).to.be.an(\"object\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"not-a-uuid\",\n  \"positionSeconds\": -10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/position",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "playback",
+                "{{streamingTitleId}}",
+                "position"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get playback position (GET /api/v1/playback/:titleId/position)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Playback position fetch succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.titleId).to.eql(pm.environment.get(\"streamingTitleId\"));",
+                  "pm.expect(body.profileId).to.eql(pm.environment.get(\"profileId\"));",
+                  "pm.expect(body.positionSeconds).to.eql(42);",
+                  "pm.expect(body.updatedAtUtc).to.be.a(\"string\").and.not.empty;"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/playback/{{streamingTitleId}}/position?profileId={{profileId}}",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "playback",
+                "{{streamingTitleId}}",
+                "position"
+              ],
+              "query": [
+                {
+                  "key": "profileId",
+                  "value": "{{profileId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get playback position - not found (GET /api/v1/playback/:titleId/position -> 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Unknown title/profile pair returns 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.status).to.eql(404);",
+                  "pm.expect(body.title).to.be.a(\"string\").and.not.empty;"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/playback/00000000-0000-0000-0000-000000000000/position?profileId={{profileId}}",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "playback",
+                "00000000-0000-0000-0000-000000000000",
+                "position"
+              ],
+              "query": [
+                {
+                  "key": "profileId",
+                  "value": "{{profileId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Playback endpoints: media lookup, position save/retrieve, and 404/400 edge cases. Requires streamingTitleId and profileId from earlier folders."
+    },
+    {
+      "name": "08 - Cleanup",
+      "item": [
+        {
+          "name": "Deregister media asset (DELETE /api/v1/admin/media-assets/:titleId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Media asset deregistered (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/admin/media-assets/{{streamingTitleId}}",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "media-assets",
+                "{{streamingTitleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deregister media asset - idempotent no-op (DELETE -> 204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Second deregister is a no-op (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{streamingUrl}}/api/v1/admin/media-assets/{{streamingTitleId}}",
+              "host": [
+                "{{streamingUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "media-assets",
+                "{{streamingTitleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete title (DELETE /api/v1/titles/:titleId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Title deleted (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/titles/{{titleId}}",
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "titles",
+                "{{titleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel subscription (DELETE /api/v1/subscriptions/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Subscription cancelled (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{subscriptionUrl}}/api/v1/subscriptions/me",
+              "host": [
+                "{{subscriptionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete profile (DELETE /api/v1/profiles/:profileId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Profile deleted (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{profileUrl}}/api/v1/profiles/{{profileId}}",
+              "host": [
+                "{{profileUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                "{{profileId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke refresh token (POST /api/v1/auth/revoke)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Refresh token revoked (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{identityUrl}}/api/v1/auth/revoke",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "revoke"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Tear down all resources in reverse-dependency order: media asset -> catalog title -> subscription -> profile -> refresh token."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({key: 'X-Correlation-Id', value: pm.variables.replaceIn('{{$guid}}')});"
+        ]
+      }
+    }
+  ]
+}
