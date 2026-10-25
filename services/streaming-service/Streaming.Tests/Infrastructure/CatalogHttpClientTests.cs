@@ -92,7 +92,7 @@ public sealed class CatalogHttpClientTests
     {
         // Arrange — capture the outbound request so we can inspect its URI.
         var capturingHandler = new CapturingMessageHandler(HttpStatusCode.OK);
-        var client           = BuildClient(capturingHandler);
+        var client           = BuildClient(capturingHandler, "http://catalog/service-root/");
         const string titleId = "my-title-123";
 
         // Act
@@ -101,8 +101,8 @@ public sealed class CatalogHttpClientTests
         // Assert — the URI must contain the exact title ID (URL-encoded if needed).
         capturingHandler.CapturedRequest.Should().NotBeNull();
         var requestUri = capturingHandler.CapturedRequest!.RequestUri!.ToString();
-        requestUri.Should().Contain(Uri.EscapeDataString(titleId),
-            because: "the client must embed the TitleId in the Catalog request URI");
+        requestUri.Should().Be($"http://catalog/service-root/api/v1/titles/{Uri.EscapeDataString(titleId)}",
+            because: "the request must preserve the configured base URL path and include the TitleId");
     }
 
     // ── Fake HttpMessageHandlers ──────────────────────────────────────────────

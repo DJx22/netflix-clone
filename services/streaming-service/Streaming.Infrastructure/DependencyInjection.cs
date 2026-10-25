@@ -65,16 +65,12 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 "Missing required configuration: CatalogClient:BaseUrl.");
 
-        // AddHttpClient<T> registers the typed client with a managed HttpClientHandler.
-        // ICatalogClient is mapped separately so Application-layer code only sees the interface.
+        // Register the interface as the typed client so its configured BaseAddress is used.
         services
-            .AddHttpClient<CatalogHttpClient>(client =>
+            .AddHttpClient<ICatalogClient, CatalogHttpClient>(client =>
             {
                 client.BaseAddress = new Uri(catalogBaseUrl.TrimEnd('/') + "/");
             });
-
-        // Map the interface → concrete type so ICatalogClient resolves from DI.
-        services.AddScoped<ICatalogClient, CatalogHttpClient>();
 
         return services;
     }
